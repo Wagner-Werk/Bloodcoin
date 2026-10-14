@@ -1,0 +1,18 @@
+{
+  "name": "bcus-mortality-workflow",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test && node test-cdc.mjs",
+    "build": "cre-compile main.ts dist/workflow.wasm"
+  },
+  "dependencies": {
+    "@chainlink/cre-sdk": "1.23.0",
+    "viem": "2.57.4",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "typescript": "5.9.3"
+  }
+}

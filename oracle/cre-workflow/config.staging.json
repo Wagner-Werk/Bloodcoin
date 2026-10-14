@@ -1,0 +1,8 @@
+{
+  "schedule": "0 0 12 * * 1",
+  "cdcBaseUrl": "https://data.cdc.gov/resource/r8kw-7aab.json",
+  "chainSelectorName": "ethereum-testnet-sepolia-base-1",
+  "isTestnet": true,
+  "oracleAddress": "0x0000000000000000000000000000000000000000",
+  "gasLimit": "300000"
+}
