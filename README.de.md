@@ -12,8 +12,10 @@ Stand: 11.10.2026. Entwurf, **nicht auditiert, nicht deployt**. Vor echtem Geld:
 | `src/CreMortalityOracle.sol` | Nimmt die CDC-Zahlen von Chainlink CRE entgegen (`onReport`). Nur der Chainlink-Forwarder darf melden, nach `pinWorkflow` nur noch genau ein Workflow. |
 | `oracle/cre-workflow/` | Der CRE-Workflow (TypeScript): jeden Montag fragen unabhängige Chainlink-Knoten data.cdc.gov ab, einigen sich und schreiben das Ergebnis ins Oracle. |
 | `script/Deploy.s.sol` | Deployt alles in einem Rutsch und verbindet die Teile. |
+| `src/FounderLock.sol` | Sperrvertrag für die Gründer-BCUS (OpenZeppelin-`VestingWallet` mit Dauer 0): 2 Jahre ab Deploy gesperrt, danach alles an den festen Empfänger. Kein Admin, Frist und Empfänger unveränderlich, frühe Abholung scheitert. |
+| `script/DeploySigned.s.sol` | Plan B: Oracle (signierter Melder), Staking, Sperrvertrag, Emission und Token in einem Durchlauf. Die Startmenge geht direkt in den Sperrvertrag. |
 | `oracle/sim/` | Simulation der Faktor-Regel an echten US-Wochenzahlen 2015 bis 2024 (`python3 -I oracle/sim/simulate.py`). |
-| `test/` | 47 Contract-Tests (21 Token/Emission/Oracle, 10 Staking, 16 Plan-B-Melder). Der Workflow hat eigene Tests in `oracle/cre-workflow/`. |
+| `test/` | 56 Contract-Tests (21 Token/Emission/Oracle, 10 Staking, 16 Plan-B-Melder, 9 Sperrvertrag). Der Workflow hat eigene Tests in `oracle/cre-workflow/`. |
 
 ## Regeln, die im Code stehen
 
@@ -44,8 +46,10 @@ Stand: 11.10.2026. Entwurf, **nicht auditiert, nicht deployt**. Vor echtem Geld:
   anderes stakt, bekommst du trotzdem fast die ganze Ausgabe. Das Staking verteilt fair nach
   Einsatz, es schützt nicht vor einem Großhalter. Ehrlicher Umgang: Startmenge in den
   Uniswap-Pool, nicht ins Staking, und das öffentlich sagen.
-- **Startmenge** (`INITIAL_MINT_BCUS`) ist ein Deploy-Parameter, gedacht für den Uniswap-Pool.
-  Vorschlag: 1.000.000 BCUS (knapp 5 %).
+- **Startmenge** (`INITIAL_MINT_BCUS`) ist ein Deploy-Parameter. Vorschlag: 1.000.000 BCUS (knapp 5 %).
+  Mit `DeploySigned.s.sol` (Plan B) geht sie direkt in `FounderLock` und ist 2 Jahre gesperrt;
+  danach kann sie nur `FOUNDER_BENEFICIARY` abholen (`release(token)`, auslösen darf jeder).
+  Für einen Uniswap-Pool steht sie in dieser Zeit nicht zur Verfügung.
 - **18 Nachkommastellen** statt 8 wie auf der eigenen Chain, weil das jede Wallet erwartet.
 
 ## Warum CRE statt Chainlink Functions

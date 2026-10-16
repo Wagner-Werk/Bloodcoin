@@ -38,6 +38,10 @@ the contract only rejects absurd values. The safeguards are:
   queries data.cdc.gov from the visitor's browser) or with `python3 oracle/signed/report.py verify <report>.json`.
 - The signing key is immutable and cannot be swapped silently. `retire()` can only switch the
   oracle off for good, after which emission continues at the last factor.
+- The founder's initial BCUS do not go to the founder's address. `script/DeploySigned.s.sol` mints
+  them into `src/FounderLock.sol` (OpenZeppelin `VestingWallet` used as a timelock): locked for 2 years
+  from deployment, then released in full to one fixed address. No admin, no early release, and
+  neither the date nor the recipient can be changed.
 
 ## Build and test
 

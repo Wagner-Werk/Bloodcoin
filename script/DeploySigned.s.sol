@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import {MortalityEmission} from "../src/MortalityEmission.sol";
 import {SignedMortalityOracle} from "../src/SignedMortalityOracle.sol";
 import {BcusStaking} from "../src/BcusStaking.sol";
+import {FounderLock} from "../src/FounderLock.sol";
 
 interface VmScript {
     function envAddress(string calldata) external view returns (address);
@@ -14,22 +15,29 @@ interface VmScript {
 
 /// Wie Deploy.s.sol, aber mit dem eigenen signierten Melder statt Chainlink CRE (Plan B).
 /// ORACLE_SIGNER ist die Adresse des Server-Schlüssels (oracle/signed/README.md).
+/// Die Startmenge (Gründer-BCUS) geht nicht an eine Adresse, sondern in den FounderLock:
+/// 2 Jahre ab Deploy gesperrt, danach kann sie nur FOUNDER_BENEFICIARY bekommen.
 contract DeploySigned {
     VmScript internal constant vm = VmScript(address(uint160(uint256(keccak256("hevm cheat code")))));
     bool public IS_SCRIPT = true;
 
-    function run() external returns (address oracle, address staking, address emission, address token) {
+    function run()
+        external
+        returns (address oracle, address staking, address emission, address token, address founderLock)
+    {
         address signer = vm.envAddress("ORACLE_SIGNER");
-        address holder = vm.envAddress("INITIAL_HOLDER");
+        address beneficiary = vm.envAddress("FOUNDER_BENEFICIARY");
         uint256 initialMint = vm.envUint("INITIAL_MINT_BCUS") * 1e18;
 
         vm.startBroadcast();
         SignedMortalityOracle o = new SignedMortalityOracle(signer);
         BcusStaking st = new BcusStaking();
-        MortalityEmission e = new MortalityEmission(address(o), address(st), holder, initialMint);
+        FounderLock lock = new FounderLock(beneficiary);
+        MortalityEmission e = new MortalityEmission(address(o), address(st), address(lock), initialMint);
         o.bind(address(e));
         st.bind(address(e));
         vm.stopBroadcast();
-        return (address(o), address(st), address(e), address(e.token()));
+        require(e.token().balanceOf(address(lock)) == initialMint, "Startmenge nicht im FounderLock");
+        return (address(o), address(st), address(e), address(e.token()), address(lock));
     }
 }

@@ -10,7 +10,7 @@ Token, Emission und Staking bleiben unverändert, nur der Oracle-Contract wird a
 | Datei | Zweck |
 |---|---|
 | `src/SignedMortalityOracle.sol` | Nimmt nur Meldungen an, die der feste Server-Schlüssel signiert hat (EIP-712, gilt nur für diesen Contract auf dieser Chain). Einreichen darf jeder. |
-| `script/DeploySigned.s.sol` | Wie `Deploy.s.sol`, nur mit diesem Oracle. Braucht `ORACLE_SIGNER` statt `CRE_FORWARDER`. |
+| `script/DeploySigned.s.sol` | Wie `Deploy.s.sol`, nur mit diesem Oracle und dem Sperrvertrag `FounderLock` für die Startmenge. Braucht `ORACLE_SIGNER` statt `CRE_FORWARDER` und `FOUNDER_BENEFICIARY` statt `INITIAL_HOLDER`. |
 | `oracle/signed/report.py` | Wöchentlicher Job: CDC abfragen, signieren, einreichen, Meldung samt CDC-Rohdaten als JSON ablegen. `verify` vergleicht eine abgelegte Meldung mit den aktuellen CDC-Zahlen. |
 | `test/SignedOracle.t.sol` | 16 Tests. `test/Test.sol` hat dafür `vm.addr` und `vm.sign` dazubekommen. |
 
@@ -50,7 +50,13 @@ data.cdc.gov prüfen, und zehn Wochen sind genug Zeit, dass es jemandem auffäll
    Keystore und Passwort ins tägliche Backup aufnehmen. Die Adresse ist `ORACLE_SIGNER`.
 3. Die Adresse braucht etwas ETH auf Base für Gas (eine Meldung kostet um 100.000 Gas, also
    Bruchteile eines Cents pro Woche; 0,001 ETH reicht lange).
-4. Deployen mit `DeploySigned.s.sol` (gleich wie im Haupt-README, `ORACLE_SIGNER` statt `CRE_FORWARDER`).
+4. Deployen mit `DeploySigned.s.sol`:
+   ```bash
+   export ORACLE_SIGNER=0x...        # Melder-Adresse aus Schritt 2
+   export FOUNDER_BENEFICIARY=0x...  # bekommt die Startmenge nach 2 Jahren aus dem FounderLock
+   export INITIAL_MINT_BCUS=1000000
+   forge script script/DeploySigned.s.sol --rpc-url $BASE_RPC --broadcast --private-key $DEPLOYER_KEY
+   ```
 5. Probelauf, dann echter Lauf:
    ```bash
    python3 oracle/signed/report.py send --rpc $BASE_RPC --oracle 0x... \
@@ -63,7 +69,7 @@ data.cdc.gov prüfen, und zehn Wochen sind genug Zeit, dass es jemandem auffäll
 
 ## Getestet
 
-47 Contract-Tests grün. Ende-zu-Ende auf einer lokalen Anvil-Chain (14.10.2026, neue Regel):
+56 Contract-Tests grün (seit 16.10.2026 mit Sperrvertrag). Ende-zu-Ende auf einer lokalen Anvil-Chain (14.10.2026, neue Regel):
 Deploy, Meldung aus echten Wochenzahlen der Grippesaison 2017/18 (+3,5 % gegen die Vorjahre,
 Ziel und Faktor 973 im Contract), zweiter Lauf erkennt "schon gemeldet". Die Faktor-Formel in
 Python und JavaScript stimmt an 20.000 Zufallswerten überein, Solidity und JavaScript an 300.

@@ -9,6 +9,7 @@ interface Vm {
     function stopPrank() external;
     function expectRevert() external;
     function expectRevert(bytes4) external;
+    function expectRevert(bytes calldata) external;
     function assertEq(uint256, uint256) external pure;
     function assertEq(address, address) external pure;
     function assertEq(bytes32, bytes32) external pure;
