@@ -1,0 +1,595 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bloodcoin Oracle Reports</title>
+<meta name="description" content="Every mortality report sent to the BCUS contract, with raw CDC data, signature and a one-click check against the CDC.">
+<link rel="stylesheet" href="/assets/rollen/fonts.css">
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+/* Layout: same world as the exchange. Sticky dark header whose section links carry a blood drop; one parchment sheet holds the whole register: trust pillars, latest report, every report with a live CDC check, the rules and the honest limits. Single committed dark world. */
+:root{
+  --night:#090b11; --night-2:#141a29;
+  --paper:#f1e8d2; --paper-2:#e3d4b0; --ink:#1f1712; --ink-soft:#6b5a49; --rule:rgba(31,23,18,.14);
+  --blood:#9e0f18; --blood-hi:#d0202b; --green:#15633d; --gold:#c9a25a;
+  --f-display:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --f-ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+body{
+  background:radial-gradient(ellipse 70% 45% at 50% 0%, rgba(158,15,24,.16), transparent 70%), radial-gradient(ellipse at 50% 0%, var(--night-2), var(--night) 70%);
+  background-color:var(--night); background-attachment:fixed;
+  color:var(--paper); font:15px/1.55 var(--f-ui); font-feature-settings:"tnum","cv11"; min-height:100%;
+  -webkit-font-smoothing:antialiased;
+}
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:20; background:#16070a}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px))}
+.banner{text-align:center; font:500 12px/1.4 var(--f-ui); color:#ecd4a6; background:rgba(158,15,24,.25); border-bottom:1px solid rgba(201,162,90,.22); padding-block:8px}
+.banner b{color:var(--gold); font-weight:700; letter-spacing:.1em; margin-right:.5em; font-size:11px}
+
+/* header + tabs */
+.top{position:sticky; top:env(safe-area-inset-top,0px); z-index:10; background:rgba(14,10,14,.86); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); border-bottom:1px solid rgba(201,162,90,.18)}
+.top-in{max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:18px; padding-block:12px 4px}
+.brand{display:flex; align-items:center; gap:10px; font:700 24px/1 var(--f-display); color:#ecd09a; letter-spacing:.01em; white-space:nowrap}
+.brand svg{width:16px; height:22px; filter:drop-shadow(0 0 6px rgba(208,32,43,.6))}
+.brand small{font:600 10px var(--f-ui); letter-spacing:.16em; color:var(--gold); border:1px solid rgba(201,162,90,.4); padding:3px 7px; border-radius:20px}
+.acct{margin-left:auto; display:flex; gap:16px; font:500 13px var(--f-ui); color:#bfb29a; white-space:nowrap}
+.acct b{color:#f4ead6; font-weight:700}
+.tabs{max-width:1180px; margin:0 auto; display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; padding-bottom:16px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{all:unset; position:relative; cursor:pointer; flex:none; padding:12px 14px 10px; font:500 14px/1 var(--f-ui); color:#a99d88; letter-spacing:.01em; border-radius:8px; transition:color .2s, background .2s}
+.tab:hover{color:#f1e6cf; background:rgba(255,255,255,.04)}
+.tab::after{content:""; position:absolute; left:50%; bottom:0; height:2px; width:0; border-radius:2px; background:linear-gradient(90deg,transparent,var(--blood-hi),transparent); transform:translateX(-50%); transition:width .35s cubic-bezier(.2,.8,.2,1)}
+.tab[aria-selected="true"]{color:#fff6e6; font-weight:600}
+.tab[aria-selected="true"]::after{width:78%}
+.drop{position:absolute; left:50%; bottom:-13px; width:11px; height:15px; margin-left:-5.5px; opacity:0; transform-origin:50% 0; pointer-events:none}
+.tab[aria-selected="true"] .drop{opacity:1; animation:drip .9s cubic-bezier(.3,1.4,.5,1) both}
+@keyframes drip{0%{transform:translateY(-9px) scale(.2,.1)} 45%{transform:translateY(0) scale(.8,1.25)} 70%{transform:scale(1.08,.9)} 100%{transform:none}}
+.tab:focus-visible{outline:2px solid #e2803a; outline-offset:2px}
+
+/* the roll and the sheet */
+main{max-width:1180px; margin:0 auto; padding-block:30px 56px}
+.scroll{position:relative}
+.roll{position:relative; z-index:2; height:0; opacity:0; margin:0 -3px; border-radius:6px;
+  background:linear-gradient(180deg,#3e2e1a 0%,#8a7150 9%,#d9c9a4 26%,#fbf5e6 40%,#fffaf0 46%,#ecdfbf 58%,#c2a97c 76%,#7a623e 91%,#33251390 100%);
+  box-shadow:0 14px 18px -10px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,250,235,.5);
+  transition:height .3s ease, opacity .3s ease, margin .3s ease}
+.scroll.rolled .roll{height:40px; opacity:1; margin-top:-4px}
+.scroll.rolled.thin .roll{height:24px; transition:height .7s cubic-bezier(.55,.05,.25,1)}
+.unroll{position:relative; overflow:hidden; height:0; transition-property:height; transition-timing-function:cubic-bezier(.55,.05,.25,1)}
+/* the paper darkens where it curls into the roll */
+.unroll::after{content:""; position:absolute; left:0; right:0; bottom:0; height:56px; pointer-events:none; opacity:0;
+  background:linear-gradient(180deg, transparent, rgba(90,62,30,.18) 55%, rgba(50,32,14,.42))}
+.scroll.rolled .unroll::after{opacity:1}
+.paper > *{transition:opacity .18s}
+.paper.blank > *{visibility:hidden}
+.paper.fade > *{opacity:0}
+.paper{
+  position:relative; padding:38px clamp(18px,4vw,52px) 30px; color:var(--ink); border-radius:3px;
+  background:
+    linear-gradient(90deg, rgba(120,84,40,.13), transparent 3%, transparent 97%, rgba(120,84,40,.13)),
+    linear-gradient(180deg, rgba(120,84,40,.12), transparent 4%, transparent 96%, rgba(120,84,40,.14)),
+    radial-gradient(ellipse at 50% 40%, var(--paper) 60%, var(--paper-2) 100%);
+}
+.scroll:not(.rolled) .unroll{box-shadow:0 30px 60px -28px rgba(0,0,0,.85), 0 0 0 1px rgba(201,162,90,.15)}
+/* flat sheet: a faint lifted corner */
+.paper::after{content:""; position:absolute; right:0; bottom:0; width:38px; height:38px; background:linear-gradient(315deg, var(--night) 0 50%, #d9c7a0 50%, #f3ead6 72%); opacity:0; transition:opacity .5s .2s; border-top-left-radius:6px; box-shadow:-3px -3px 6px rgba(0,0,0,.12)}
+.scroll:not(.rolled) .paper::after{opacity:1}
+
+.head{display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 16px; border-bottom:1px solid rgba(31,23,18,.5); padding-bottom:12px; margin-bottom:22px}
+.head h1{margin:0; font:700 clamp(30px,4vw,44px)/1 var(--f-display); color:var(--ink); letter-spacing:-.005em; text-wrap:balance}
+.head .eb{font:700 10.5px var(--f-ui); letter-spacing:.18em; text-transform:uppercase; color:var(--blood)}
+.head .note{margin-left:auto; font:500 12px var(--f-ui); color:var(--ink-soft); background:rgba(31,23,18,.06); padding:4px 10px; border-radius:20px}
+h2{margin:0 0 4px; font:700 11px/1.2 var(--f-ui); letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft)}
+p{margin:0}
+.small{font-size:13.5px; color:var(--ink-soft)}
+a{color:var(--blood); font-weight:600; text-underline-offset:3px}
+
+/* layout inside sheets */
+.cols{display:grid; gap:28px}
+.c3{grid-template-columns:minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)}
+.c2{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+.col{display:flex; flex-direction:column; gap:12px; min-width:0}
+.col + .col{border-left:1px solid var(--rule); padding-left:28px}
+@media (max-width:900px){
+  .c3,.c2{grid-template-columns:minmax(0,1fr)}
+  .c3 > .col:nth-child(2){order:-1}
+  .col + .col, .c3 > .col:first-child{border-left:0; padding-left:0; border-top:1px solid var(--rule); padding-top:22px}
+  .c3 > .col:nth-child(2){border-top:0; padding-top:0}
+}
+
+/* figures */
+.figs{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px 18px}
+.figs span{display:block; font:600 10.5px var(--f-ui); letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft); margin-bottom:6px}
+.figs b{display:block; font:800 clamp(24px,2.4vw,34px)/1 var(--f-ui); letter-spacing:-.035em; color:var(--ink); white-space:nowrap}
+.figs .hero b{color:var(--blood); text-shadow:0 0 18px rgba(208,32,43,.25)}
+.figs b small{font-size:.5em; font-weight:700; letter-spacing:0; margin-left:2px; color:var(--ink-soft)}
+.up{color:var(--green)!important} .down{color:var(--blood)!important}
+.figs b.chip::before{content:"\25B2"; font-size:.42em; vertical-align:.45em; margin-right:4px}
+
+/* chart */
+.chart-wrap{position:relative; border-radius:6px; background:linear-gradient(180deg, rgba(31,23,18,.035), rgba(31,23,18,0))}
+.chart{width:100%; height:auto; display:block; overflow:visible}
+.chart .grid line{stroke:rgba(31,23,18,.1); stroke-dasharray:2 4}
+.chart .ylab{font:600 15px var(--f-ui); fill:var(--ink-soft)}
+.chart .line{fill:none; stroke-width:2.6; stroke-linecap:round; stroke-linejoin:round}
+.chart .glint{fill:none; stroke-width:3; stroke-linecap:round; mix-blend-mode:screen}
+.chart .area{opacity:0}
+.chart .spark{fill:#e7b660}
+.chart .tip{font:800 16px var(--f-ui)}
+.paper.ink .chart .line{stroke-dasharray:1; stroke-dashoffset:1; animation:draw 1.6s cubic-bezier(.6,0,.2,1) var(--d,0s) forwards}
+.paper.ink .chart .area{animation:fadein 1s calc(var(--d,0s) + 1.1s) forwards}
+.paper.ink .chart .endpt, .paper.ink .chart .tag{opacity:0; animation:fadein .5s calc(var(--d,0s) + 1.5s) forwards}
+.chart .area{opacity:1} .paper.ink .chart .area{opacity:0}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes fadein{to{opacity:1}}
+.chart .pulse{transform-box:fill-box; transform-origin:center; animation:pulse 2.2s ease-out infinite}
+@keyframes pulse{0%{transform:scale(.6); opacity:.7} 100%{transform:scale(3.2); opacity:0}}
+.chart .spark{animation:twinkle 3s ease-in-out infinite; opacity:0}
+@keyframes twinkle{0%,100%{opacity:0; transform:scale(.4)} 50%{opacity:.95; transform:scale(1)}}
+.chart .spark{transform-box:fill-box; transform-origin:center}
+.cross{position:absolute; top:0; bottom:0; width:1px; background:rgba(158,15,24,.35); pointer-events:none; opacity:0}
+.cross b{position:absolute; top:4px; left:6px; font:700 11px var(--f-ui); color:#fff; background:var(--blood); padding:3px 6px; border-radius:4px; white-space:nowrap}
+
+/* tables */
+table{width:100%; border-collapse:collapse; font-size:13.5px; font-variant-numeric:tabular-nums}
+th{font:600 10.5px var(--f-ui); letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); text-align:left; padding:0 0 8px; border-bottom:1px solid rgba(31,23,18,.4)}
+td{padding:7px 0; border-bottom:1px solid var(--rule); font-weight:500}
+th.r,td.r{text-align:right}
+.ask td:first-child{color:var(--blood); font-weight:700} .bid td:first-child{color:var(--green); font-weight:700}
+.depth{background-repeat:no-repeat; background-position:right center}
+.ask .depth{background-image:linear-gradient(90deg, rgba(158,15,24,.0), rgba(158,15,24,.16))}
+.bid .depth{background-image:linear-gradient(90deg, rgba(31,122,79,.0), rgba(31,122,79,.18))}
+.spread td{text-align:center; font:700 16px var(--f-ui); color:var(--ink); border-block:1px solid rgba(31,23,18,.4); padding:10px 0; letter-spacing:-.01em}
+.spread small{font:500 11px var(--f-ui); color:var(--ink-soft); margin-left:8px}
+.overflow{overflow-x:auto}
+
+/* forms */
+.seg{display:flex; background:rgba(31,23,18,.07); border-radius:10px; padding:4px; gap:4px}
+.seg button{all:unset; flex:1; text-align:center; cursor:pointer; padding:10px; font:600 14px var(--f-ui); color:var(--ink-soft); border-radius:7px; transition:background .2s, color .2s}
+.seg button[aria-pressed="true"]{background:#fffaf0; color:var(--blood); box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.seg button[data-side="buy"][aria-pressed="true"]{color:var(--green)}
+.seg button:focus-visible{outline:2px solid #e2803a; outline-offset:-2px}
+form{display:flex; flex-direction:column; gap:6px}
+label{font:600 10.5px var(--f-ui); letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-top:10px}
+input{box-sizing:border-box; font:600 17px var(--f-ui); color:var(--ink); background:rgba(255,253,246,.7); border:1px solid rgba(31,23,18,.18); padding:11px 12px; border-radius:8px; width:100%; color-scheme:light; font-variant-numeric:tabular-nums}
+input::placeholder{color:rgba(107,90,73,.6); font-weight:500}
+input:focus{outline:none; border-color:var(--blood); box-shadow:0 0 0 3px rgba(158,15,24,.15)}
+.two{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.two > div{display:flex; flex-direction:column; gap:6px; min-width:0}
+.total{display:flex; justify-content:space-between; align-items:baseline; border-top:1px dashed rgba(31,23,18,.25); margin-top:12px; padding-top:12px; font:600 13px var(--f-ui); color:var(--ink-soft); text-transform:uppercase; letter-spacing:.1em}
+.total b{font:800 26px var(--f-ui); letter-spacing:-.03em; color:var(--ink); text-transform:none}
+.btn{all:unset; box-sizing:border-box; cursor:pointer; text-align:center; padding:14px 18px; margin-top:10px; background:linear-gradient(180deg,var(--blood-hi),var(--blood)); color:#fff6e8;
+  font:700 14px/1 var(--f-ui); letter-spacing:.04em; border-radius:10px; box-shadow:0 6px 16px -6px rgba(158,15,24,.7)}
+.btn:hover{filter:brightness(1.08)}
+.btn.buy{background:linear-gradient(180deg,#27935f,var(--green)); box-shadow:0 6px 16px -6px rgba(31,122,79,.7)}
+.btn:focus-visible{outline:2px solid #e2803a; outline-offset:2px}
+.msg{min-height:1.4em; font:500 13px var(--f-ui); color:var(--blood)}
+dl{display:grid; grid-template-columns:max-content 1fr; gap:10px 26px; margin:0; align-items:baseline}
+dt{font:500 14px var(--f-ui); color:var(--ink-soft)} dd{margin:0; font:800 22px var(--f-ui); letter-spacing:-.02em}
+.addr{word-break:break-all; background:rgba(255,253,246,.6); border:1px dashed rgba(31,23,18,.25); border-radius:8px; padding:12px; font:13px var(--f-mono)}
+.rules{list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px}
+.rules li{display:grid; grid-template-columns:2em 1fr; gap:4px; font-size:14.5px}
+.rules .r{font:700 26px/1 var(--f-display); color:var(--blood)}
+.wide{max-width:520px}
+.foot{margin-top:26px; padding-top:12px; border-top:1px solid var(--rule); display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; font:500 11.5px var(--f-ui); color:var(--ink-soft)}
+
+/* ink: the content appears on the sheet */
+.paper.ink [data-ink]{animation:ink 1s cubic-bezier(.2,.7,.2,1) var(--d,0s) both}
+.paper.ink [data-wipe]{-webkit-mask-image:linear-gradient(180deg,#000 45%,transparent 55%); mask-image:linear-gradient(180deg,#000 45%,transparent 55%);
+  -webkit-mask-size:100% 300%; mask-size:100% 300%; animation:wipe 1.3s ease-out var(--d,0s) both}
+@keyframes ink{
+  0%{opacity:0; filter:blur(7px) sepia(1) saturate(4) hue-rotate(-30deg); transform:translateY(3px) scale(.99)}
+  45%{opacity:.75; filter:blur(1.5px) sepia(1) saturate(5) hue-rotate(-40deg)}
+  100%{opacity:1; filter:none; transform:none}
+}
+@keyframes wipe{from{-webkit-mask-position:0 100%; mask-position:0 100%} to{-webkit-mask-position:0 0; mask-position:0 0}}
+
+@media (max-width:560px){ .two{grid-template-columns:1fr} dl{grid-template-columns:1fr; gap:0} dd{margin-bottom:10px} .acct{display:none} .paper{padding-top:30px} }
+@media (prefers-reduced-motion: reduce){ .unroll,.roll{transition:none!important} .paper.ink [data-ink], .paper.ink [data-wipe], .chart *, .tab .drop{animation:none!important; opacity:1} .paper.ink .chart .line{stroke-dasharray:none} }
+
+/* v5 additions */
+[hidden]{display:none!important}
+.tabs-wrap{position:relative}
+.tabs-wrap::after{content:""; position:absolute; right:0; top:0; bottom:16px; width:44px; pointer-events:none; background:linear-gradient(90deg,transparent,rgba(14,10,14,.95)); opacity:0; transition:opacity .2s}
+.tabs-wrap.more::after{opacity:1}
+.tab .lock{display:inline-block; width:9px; height:11px; margin-left:6px; vertical-align:-1px; opacity:.6}
+.tab[data-locked="false"] .lock{display:none}
+.ext{font:500 13px var(--f-ui); color:#bfb29a; text-decoration:none; white-space:nowrap}
+.ext:hover{color:#fff}
+.ghost{all:unset; cursor:pointer; font:600 13px var(--f-ui); color:#f1e6cf; border:1px solid rgba(201,162,90,.4); padding:6px 12px; border-radius:20px}
+.ghost:hover{background:rgba(201,162,90,.12)}
+.ghost:focus-visible,.gbtn:focus-visible{outline:2px solid #e2803a; outline-offset:2px}
+.gbtn{all:unset; box-sizing:border-box; cursor:pointer; font:600 13px var(--f-ui); color:var(--ink); border:1px solid rgba(31,23,18,.3); padding:8px 14px; border-radius:8px; background:rgba(255,253,246,.6); text-align:center}
+.gbtn:hover{border-color:var(--blood); color:var(--blood)}
+.gbtn.sm{padding:4px 10px; font-size:12px}
+.stats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px}
+.stat .big{font:800 clamp(24px,2.6vw,34px)/1.05 var(--f-ui); letter-spacing:-.03em; margin:6px 0 4px; white-space:nowrap}
+.stat .big small{font-size:.48em; font-weight:700; letter-spacing:0; color:var(--ink-soft); margin-left:3px}
+.stat .sub{font:500 12.5px var(--f-ui); color:var(--ink-soft)}
+.depbox{display:flex; gap:8px; align-items:stretch}
+.depbox .addr{flex:1; margin:0}
+code{font:12px var(--f-mono); background:rgba(31,23,18,.06); padding:2px 5px; border-radius:4px; word-break:break-all}
+.sect{margin-top:30px; padding-top:22px; border-top:1px solid var(--rule)}
+.h-mid{font:700 clamp(24px,3vw,32px)/1.1 var(--f-display); margin:0 0 10px}
+.lead{font-size:17px; line-height:1.6; max-width:62ch}
+.livechip{display:inline-flex; align-items:center; gap:8px; font:600 12px var(--f-ui); color:var(--green); background:rgba(21,99,61,.09); padding:5px 12px; border-radius:20px; margin-bottom:14px}
+.livechip i{width:7px; height:7px; border-radius:50%; background:var(--green); box-shadow:0 0 0 0 rgba(21,99,61,.5); animation:live 2s infinite}
+@keyframes live{70%{box-shadow:0 0 0 7px rgba(21,99,61,0)} 100%{box-shadow:0 0 0 0 rgba(21,99,61,0)}}
+.feats{display:flex; flex-wrap:wrap; gap:8px; margin-top:14px}
+.feats span{font:500 12.5px var(--f-ui); background:rgba(31,23,18,.06); padding:5px 11px; border-radius:20px}
+.steps{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px; margin-top:16px}
+.steps > div{display:flex; flex-direction:column; gap:6px}
+.steps b.n{font:700 30px/1 var(--f-display); color:var(--blood)}
+.steps h3{margin:0; font:700 15px var(--f-ui)}
+.steps p{font-size:14px; color:var(--ink-soft)}
+.g3{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px}
+.g3 h3{margin:0 0 6px; font:700 15px var(--f-ui)}
+.g3 p{font-size:14px; color:var(--ink-soft)}
+.facts dd{font:600 15px var(--f-ui); letter-spacing:0}
+.facts dt{font-size:13.5px}
+.disc{margin-top:22px; padding:14px 16px; border-left:3px solid var(--blood); background:rgba(158,15,24,.05); font-size:13.5px}
+.status{font:600 11px var(--f-ui); text-transform:uppercase; letter-spacing:.08em; padding:2px 8px; border-radius:20px; background:rgba(31,23,18,.07)}
+.status.ok{color:var(--green); background:rgba(21,99,61,.1)} .status.wait{color:#8a5a00; background:rgba(201,140,20,.14)}
+td.mono{font:12px var(--f-mono)}
+.side-buy{color:var(--green); font-weight:700} .side-sell{color:var(--blood); font-weight:700}
+.wfoot{display:flex; justify-content:space-between; flex-wrap:wrap; gap:6px; font:500 13px var(--f-ui); color:var(--ink-soft); margin-top:12px}
+.gate{margin-bottom:16px; padding:12px 14px; border-radius:8px; background:rgba(158,15,24,.07); color:var(--blood); font:600 13.5px var(--f-ui)}
+.chart .xlab{font:600 15px var(--f-ui); fill:var(--ink-soft)}
+.chart-wrap{touch-action:pan-y}
+th + th, td + td{padding-left:14px}
+.livechip{align-self:flex-start}
+.paper.quick .chart .area{animation-delay:calc(var(--d,0s) + .5s)}
+.paper.quick .chart .endpt, .paper.quick .chart .tag{animation-delay:calc(var(--d,0s) + .7s)}
+/* quick tab change after the first open */
+.paper.quick [data-ink]{animation:inkq .45s ease-out var(--d,0s) both}
+@keyframes inkq{from{opacity:0; filter:blur(3px)} to{opacity:1; filter:none}}
+.paper.quick .chart .line{animation-duration:.8s}
+@media (max-width:900px){ .stats,.g3{grid-template-columns:minmax(0,1fr)} .steps{grid-template-columns:repeat(2,minmax(0,1fr))} }
+@media (max-width:560px){ .steps{grid-template-columns:minmax(0,1fr)} .top-in .ext{display:none} .depbox{flex-direction:column} }
+
+/* oracle page */
+.pillars{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:24px}
+.pillars .ic{width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:rgba(158,15,24,.09); color:var(--blood); margin-bottom:8px}
+.pillars .ic svg{width:18px; height:18px}
+.pillars h3{margin:0 0 4px; font:700 15px var(--f-ui)}
+.pillars p{font-size:14px; color:var(--ink-soft)}
+.latest{background:rgba(255,253,246,.55); border:1px solid rgba(31,23,18,.14); border-radius:12px; padding:20px}
+.latest .meta{font:500 13px var(--f-ui); color:var(--ink-soft); margin-top:12px}
+.figs.f4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.honest{border-left:3px solid var(--blood); padding:14px 18px; background:rgba(158,15,24,.05); border-radius:0 8px 8px 0}
+.honest h2{color:var(--blood)}
+.honest p{font-size:14.5px; margin-top:6px}
+.flow{list-style:none; margin:14px 0 0; padding:0; display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:14px; counter-reset:f}
+.flow li{position:relative; padding-top:34px; font-size:13.5px; color:var(--ink-soft)}
+.flow li b{display:block; color:var(--ink); font:700 14px var(--f-ui); margin-bottom:2px}
+.flow li::before{counter-increment:f; content:counter(f); position:absolute; top:0; left:0; width:26px; height:26px; border-radius:50%; background:var(--blood); color:#fff6e6; font:700 13px/26px var(--f-ui); text-align:center}
+.flow li:not(:last-child)::after{content:""; position:absolute; top:13px; left:32px; right:-8px; height:1px; background:rgba(158,15,24,.35)}
+.limits{list-style:none; margin:10px 0 0; padding:0; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 24px}
+.limits li{display:flex; gap:10px; font-size:14px}
+.limits li::before{content:""; flex:none; width:7px; height:10px; margin-top:6px; border-radius:50% 50% 50% 50%/60% 60% 40% 40%; background:var(--blood)}
+tr.row{cursor:pointer} tr.row:hover td{background:rgba(31,23,18,.04)}
+tr.row td:first-child::before{content:"\25B8"; display:inline-block; width:14px; color:var(--ink-soft); transition:transform .2s}
+tr.row[aria-expanded="true"] td:first-child::before{transform:rotate(90deg)}
+.more-moredays{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px 18px; font-size:12.5px; margin:10px 0 14px}
+.more-moredays div{display:flex; justify-content:space-between; gap:8px; color:var(--ink-soft)}
+.more-moredays div span:last-child{color:var(--ink); font-weight:600}
+.more-moredays .yr{grid-column:1/-1; font:700 10.5px var(--f-ui); letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-top:6px}
+.kv{display:grid; grid-template-columns:120px 1fr; gap:6px 14px; font-size:13px; margin-bottom:12px}
+.kv > span:nth-child(odd){color:var(--ink-soft); font-weight:500}
+.kv .m{font:12px var(--f-mono); word-break:break-all}
+td.detail{background:rgba(31,23,18,.03); padding:12px 14px}
+.result{margin-top:12px; padding:12px 14px; border-radius:8px; font:500 13.5px var(--f-ui)}
+.result.ok{background:rgba(21,99,61,.1); color:var(--green)}
+.result.bad{background:rgba(158,15,24,.09); color:var(--blood)}
+.result.warn{background:rgba(201,140,20,.14); color:#7a4f00}
+.result ul{margin:6px 0 0; padding-left:18px; color:var(--ink-soft)}
+pre{background:rgba(31,23,18,.06); border-radius:8px; padding:12px; overflow-x:auto; font:12.5px var(--f-mono)}
+.more-up{color:var(--blood); font-weight:700} .more-down{color:var(--green); font-weight:700}
+.nav a.tab{text-decoration:none}
+@media (max-width:900px){ .pillars{grid-template-columns:minmax(0,1fr)} .figs.f4{grid-template-columns:repeat(2,minmax(0,1fr))} .flow{grid-template-columns:minmax(0,1fr)} .flow li:not(:last-child)::after{display:none} .flow li{padding:0 0 0 38px} .limits{grid-template-columns:minmax(0,1fr)} }
+tr.row td:first-child{white-space:nowrap}
+.more-moredays div{white-space:nowrap}
+@media (max-width:560px){ .more-moredays{grid-template-columns:minmax(0,1fr); gap:3px; font-size:12.5px} td.detail{padding:10px 8px} tr.row td:first-child{white-space:normal} th,td{font-size:12.5px} th + th, td + td{padding-left:8px} .kv{grid-template-columns:1fr} .hide-sm{display:none} }
+</style>
+</head>
+<body>
+<div class="banner gut" role="note"><b>IN DEVELOPMENT</b>Bloodcoin is still in development. BCUS is not yet available for purchase.</div>
+
+<header class="top">
+  <div class="top-in gut">
+    <a class="brand" href="https://bloodcoin-us.com" style="text-decoration:none"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M5 0C5 0 0 6.5 0 9a5 5 0 0 0 10 0C10 6.5 5 0 5 0z" fill="#d0202b"/></svg>Bloodcoin <small>ORACLE</small></a>
+    <span class="acct"><a class="ext" href="https://bloodcoin-us.com">The book</a><a class="ext" href="https://exchange.bloodcoin-us.com">Exchange</a><a class="ext" href="https://bloodcoin-us.com/whitepaper" target="_blank" rel="noopener">Whitepaper ↗</a><a class="ext" href="https://node.bloodcoin-us.com">Explorer ↗</a></span>
+  </div>
+  <div class="tabs-wrap" id="tabswrap">
+    <nav class="tabs gut nav" id="tabs" aria-label="Sections">
+      <a class="tab" href="#latest" data-sec="latest">Latest</a>
+      <a class="tab" href="#reports" data-sec="reports">All reports</a>
+      <a class="tab" href="#rules" data-sec="rules">Rules</a>
+      <a class="tab" href="#verify" data-sec="verify">Verify yourself</a>
+      <a class="tab" href="#contract" data-sec="contract">Contract &amp; code</a>
+    </nav>
+  </div>
+</header>
+
+<main class="gut">
+  <div class="scroll rolled" id="scroll">
+    <div class="unroll" id="unroll"><div class="paper blank" id="paper">
+
+  <div class="head"><span class="eb">The register</span><h1>Every number we report, open to check</h1><span class="note" data-preview hidden>Example data</span></div>
+  <p class="lead">Each week our server reads US death counts from the CDC, signs them and sends them to the BCUS contract. The contract uses them to set how many new BCUS are created. Every report is listed here with the exact CDC weeks it used, and you can check each one against the CDC directly from your browser, without trusting our server.</p>
+
+  <div class="pillars sect">
+    <section><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div><h3>Public source</h3><p>Weekly US deaths from the CDC dataset <a href="https://data.cdc.gov/d/r8kw-7aab" target="_blank" rel="noopener">r8kw-7aab</a>. Only weeks at least 8 weeks old, because recent counts are still revised.</p></section>
+    <section><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg></div><h3>Signed and on chain</h3><p>Every report is signed and stored in the oracle contract on Base. The transaction and the contract's verified source are public on Basescan.</p></section>
+    <section><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></div><h3>Check it yourself</h3><p>One click asks the CDC from your own browser and compares every week. Our server is not involved in the check.</p></section>
+  </div>
+
+  <section class="sect" id="latest">
+    <h2>Latest report</h2>
+    <div class="latest" data-latest><p class="small">Loading…</p></div>
+  </section>
+
+  <section class="sect honest">
+    <h2>Who runs this oracle, and why that matters</h2>
+    <p>The oracle is run by <b>the Bloodcoin founder</b>, who also <b data-holding>holds a large amount of BCUS</b>. That is a conflict of interest: whoever reports the numbers influences the emission.</p>
+    <p>The contract rejects implausible values and limits how far one report can move the factor. A small, plausible-looking change would still be accepted. The protection is that every report is public and anyone can compare it with the CDC. If a report does not match, please say so publicly.</p>
+  </section>
+
+  <section class="sect" id="reports">
+    <h2>All reports</h2>
+    <p class="small" style="margin-bottom:10px">Tap a row to see the 16 CDC weeks, the signature and the transaction, and to check it against the CDC.</p>
+    <div class="overflow"><table>
+      <thead><tr><th>4 weeks ending</th><th class="r">Deaths</th><th class="r hide-sm">3-year average</th><th class="r">Difference</th><th class="r">Target factor</th></tr></thead>
+      <tbody data-rows><tr><td colspan="5" class="small">Loading…</td></tr></tbody>
+    </table></div>
+  </section>
+
+  <section class="sect" id="rules">
+    <h2>How the number is calculated</h2>
+    <p><b>Deaths</b> is the sum of US deaths in the 4 weeks up to the report week. <b>3-year average</b> is the same 4 calendar weeks in each of the previous 3 years, averaged.</p>
+    <p style="margin-top:8px">Within ±3 % the target factor is 1.0. Beyond that, each further percent of excess deaths lowers it by 0.05, and each percent below the average raises it by 0.05, limited to 0.5 to 1.5. The factor used for emission moves at most 0.05 per report toward the target.</p>
+    <h2 style="margin-top:22px">What the contract enforces</h2>
+    <ul class="limits">
+      <li>Only reports signed by the oracle key are accepted.</li>
+      <li>Deaths must lie between 80,000 and 1,000,000.</li>
+      <li>Deaths and 3-year average may differ by at most a factor of two.</li>
+      <li>The factor moves at most 0.05 per report.</li>
+      <li>The factor always stays between 0.5 and 1.5.</li>
+      <li>All parameters are fixed. Nobody can change the contract.</li>
+    </ul>
+    <h2 style="margin-top:22px">How a report travels</h2>
+    <ol class="flow">
+      <li><b>CDC publishes</b>Weekly death counts appear on data.cdc.gov.</li>
+      <li><b>Server reads</b>Every Monday at 12:00 UTC the script fetches the 16 weeks it needs.</li>
+      <li><b>Server signs</b>The figures are signed with the oracle key (EIP-712).</li>
+      <li><b>Contract checks</b>Signature and limits are verified before the report is stored.</li>
+      <li><b>Published here</b>The report and the full CDC answer appear on this page.</li>
+    </ol>
+  </section>
+
+  <section class="sect" id="verify">
+    <h2>Verify without this page</h2>
+    <p>The CDC still revises recent weeks, usually upward by 1–2 %, so a small difference to today's numbers is normal. To check from the command line, download a report and the <a href="/oracle-data/report.py">script that creates it</a> (Python 3, no other dependencies for checking), then run:</p>
+    <pre>python3 report.py verify 2026-08-15.json</pre>
+    <p class="small">Found a report that does not match? Write to <a href="mailto:contact@bloodcoin-us.com">contact@bloodcoin-us.com</a> or open an issue on <a href="https://github.com/Wagnermichel88/Bloodcoin/issues" target="_blank" rel="noopener">GitHub</a>. Please also say so publicly.</p>
+  </section>
+
+  <section class="sect" id="contract">
+    <h2>Contract and code</h2>
+    <div class="kv" data-contract><span>Network</span><span>–</span></div>
+    <p class="small">The oracle, token, emission and staking contracts are open source under the MIT licence: <a href="https://github.com/Wagnermichel88/Bloodcoin" target="_blank" rel="noopener">github.com/Wagnermichel88/Bloodcoin</a>. The token currently runs only on the Base Sepolia test network and has no value.</p>
+  </section>
+
+  <p class="disc">Not investment advice. BCUS is not yet available for purchase and is not offered to persons in the United States. The factor shown here controls how many new tokens are created; it says nothing about any price or value. <a href="https://bloodcoin-us.com/whitepaper" target="_blank" rel="noopener">Whitepaper and legal information</a>.</p>
+  <div class="foot"><span>bloodcoin-us.com/oracle</span><span>Reports every Monday, 12:00 UTC</span></div>
+
+    </div></div>
+    <div class="roll bot" aria-hidden="true"></div>
+  </div>
+</main>
+
+<script>
+(() => {
+// Where the reports live (report.py --out-dir), served relative to this page.
+const DATA = "/oracle-data/";
+// Public statement of the founder's holding. Fill with the real amount before mainnet.
+const FOUNDER_HOLDING = "";
+const CDC = "https://data.cdc.gov/resource/r8kw-7aab.json";
+const EXPLORERS = { 8453: ["Base", "https://basescan.org"], 84532: ["Base Sepolia (test network)", "https://sepolia.basescan.org"] };
+const DAY = 86400000;
+// Outside the real domains this page shows example reports instead of loading /oracle-data/.
+const PREVIEW = !/(^|\.)bloodcoin-us\.com$/.test(location.hostname);
+const SAMPLE = [{"week_ending": "2026-08-15", "recent_deaths": 227026, "baseline_deaths": 222273, "target_milli": 1000, "weeks_used": {"2026-08-15": 56526, "2026-08-08": 55817, "2026-08-01": 56817, "2026-07-25": 57866, "2025-08-16": 54997, "2025-08-09": 55096, "2025-08-02": 58163, "2025-07-26": 56994, "2024-08-17": 54785, "2024-08-10": 55897, "2024-08-03": 56787, "2024-07-27": 54637, "2023-08-19": 56078, "2023-08-12": 54879, "2023-08-05": 54153, "2023-07-29": 54352}, "chain_id": 84532, "tx": "0x0000example0000transaction0000not0000real00000815", "signer": "0x0000example0000signer0000not0000real", "oracle": "0x0000example0000oracle0000not0000real", "signature": "0x0000example0000signature0000not0000real", "fetched_at": "2026-10-12T12:00:04Z", "file": "2026-08-15.json"}, {"week_ending": "2026-08-08", "recent_deaths": 227476, "baseline_deaths": 222380, "target_milli": 1000, "weeks_used": {"2026-08-08": 55817, "2026-08-01": 56817, "2026-07-25": 57866, "2026-07-18": 56976, "2025-08-09": 55096, "2025-08-02": 58163, "2025-07-26": 56994, "2025-07-19": 56512, "2024-08-10": 55897, "2024-08-03": 56787, "2024-07-27": 54637, "2024-07-20": 54686, "2023-08-12": 54879, "2023-08-05": 54153, "2023-07-29": 54352, "2023-07-22": 54985}, "chain_id": 84532, "tx": "0x0000example0000transaction0000not0000real00000808", "signer": "0x0000example0000signer0000not0000real", "oracle": "0x0000example0000oracle0000not0000real", "signature": "0x0000example0000signature0000not0000real", "fetched_at": "2026-10-05T12:00:04Z", "file": "2026-08-08.json"}, {"week_ending": "2026-08-01", "recent_deaths": 227230, "baseline_deaths": 222902, "target_milli": 1000, "weeks_used": {"2026-08-01": 56817, "2026-07-25": 57866, "2026-07-18": 56976, "2026-07-11": 55571, "2025-08-02": 58163, "2025-07-26": 56994, "2025-07-19": 56512, "2025-07-12": 57057, "2024-08-03": 56787, "2024-07-27": 54637, "2024-07-20": 54686, "2024-07-13": 56138, "2023-08-05": 54153, "2023-07-29": 54352, "2023-07-22": 54985, "2023-07-15": 54242}, "chain_id": 84532, "tx": "0x0000example0000transaction0000not0000real00000801", "signer": "0x0000example0000signer0000not0000real", "oracle": "0x0000example0000oracle0000not0000real", "signature": "0x0000example0000signature0000not0000real", "fetched_at": "2026-09-28T12:00:04Z", "file": "2026-08-01.json"}];
+
+const $ = (s, el = document) => el.querySelector(s);
+const fmt = (n) => Number(n).toLocaleString("en-US");
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const dayOf = (iso) => Date.parse(iso + "T00:00:00Z") / DAY;
+const isoOf = (day) => new Date(day * DAY).toISOString().slice(0, 10);
+const nice = (iso) => new Date(iso.slice(0, 10) + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+const pctOf = (r) => (r.recent_deaths - r.baseline_deaths) / r.baseline_deaths * 100;
+
+if (FOUNDER_HOLDING) $("[data-holding]").textContent = "holds " + FOUNDER_HOLDING;
+
+// Same rule as report.py / MortalityEmission.targetFor.
+function targetMilli(recent, baseline) {
+  const diff = Math.abs(recent - baseline);
+  const bp = Math.floor((diff * 10000 + Math.floor(baseline / 2)) / baseline);
+  if (bp <= 300) return 1000;
+  const adj = Math.floor(5 * (bp - 300) / 10);
+  return recent > baseline ? Math.max(500, 1000 - adj) : Math.min(1500, 1000 + adj);
+}
+// The 4 weeks up to `day`, then the same 4 weeks in each of the 3 previous years (364 days back each).
+const windows = (day) => [0, 1, 2, 3].map((k) => [0, 1, 2, 3].map((j) => day - 364 * k - 7 * j));
+function compute(weeks, day) {
+  const g = windows(day);
+  if (!g.flat().every((d) => weeks[d] !== undefined)) return null;
+  const recent = g[0].reduce((s, d) => s + weeks[d], 0);
+  const past = g.slice(1).flat().reduce((s, d) => s + weeks[d], 0);
+  const baseline = Math.floor((past + 1) / 3);
+  return { recent, baseline, target: targetMilli(recent, baseline) };
+}
+const link = (r, kind, val) => { const ex = EXPLORERS[r.chain_id]; return ex ? `<a href="${ex[1]}/${kind}/${esc(val)}" target="_blank" rel="noopener">${esc(val)}</a>` : esc(val); };
+
+function detail(r) {
+  const used = Object.fromEntries(Object.entries(r.weeks_used || {}).map(([k, v]) => [dayOf(k), v]));
+  const labels = ["Report year", "1 year earlier", "2 years earlier", "3 years earlier"];
+  const grid = windows(dayOf(r.week_ending)).map((g, k) =>
+    `<div class="yr">${labels[k]}</div>` + g.slice().reverse().map((d) => `<div><span>${isoOf(d)}</span><span>${used[d] !== undefined ? fmt(used[d]) : "–"}</span></div>`).join("")).join("");
+  return `<div class="more-moredays">${grid}</div>
+    <div class="kv">
+      <span>Transaction</span><span class="m">${r.tx ? link(r, "tx", r.tx) : "not sent"}</span>
+      <span>Oracle</span><span class="m">${link(r, "address", r.oracle)}</span>
+      <span>Signer</span><span class="m">${link(r, "address", r.signer)}</span>
+      <span>Signature</span><span class="m">${esc(r.signature)}</span>
+      <span>Fetched</span><span class="m">${esc(r.fetched_at)}</span>
+      <span>Raw data</span><span class="m"><a href="${DATA}${encodeURIComponent(r.file)}" target="_blank" rel="noopener">${esc(r.file)}</a> (full CDC answer)</span>
+    </div>
+    <button class="btn" type="button" data-check style="margin:0">Check against the CDC now</button>
+    <div data-result></div>`;
+}
+
+async function check(r, box, btn) {
+  btn.disabled = true;
+  box.innerHTML = `<div class="result warn">Asking the CDC…</div>`;
+  try {
+    const days = windows(dayOf(r.week_ending)).flat();
+    const where = "`group` = 'By Week' AND week_ending_date in(" + days.map((d) => `'${isoOf(d)}T00:00:00.000'`).join(",") + ")";
+    const url = CDC + "?" + new URLSearchParams({ state: "United States", $select: "week_ending_date,total_deaths", $where: where, $limit: "50" });
+    const res = await fetch(url);
+    if (!res.ok) throw new Error("CDC answered " + res.status);
+    const now = {};
+    for (const row of await res.json()) now[dayOf(String(row.week_ending_date).slice(0, 10))] = Math.trunc(Number(row.total_deaths));
+    const used = Object.fromEntries(Object.entries(r.weeks_used || {}).map(([k, v]) => [dayOf(k), v]));
+    const ours = compute(used, dayOf(r.week_ending));
+    const cdc = compute(now, dayOf(r.week_ending));
+    const issues = [];
+    if (!ours || ours.recent !== r.recent_deaths || ours.baseline !== r.baseline_deaths) issues.push("The reported totals do not add up from the listed weeks.");
+    if (ours && ours.target !== r.target_milli) issues.push("The target factor does not follow from the reported numbers.");
+    if (!cdc) issues.push("The CDC did not return all 16 weeks.");
+    const diffs = days.filter((d) => used[d] !== undefined && now[d] !== undefined)
+      .map((d) => ({ d, pct: (used[d] - now[d]) / now[d] * 100 })).filter((x) => Math.abs(x.pct) >= 0.05);
+    const worst = diffs.reduce((m, x) => Math.max(m, Math.abs(x.pct)), 0);
+    const list = diffs.map((x) => `<li>${isoOf(x.d)}: reported ${fmt(used[x.d])}, CDC today ${fmt(now[x.d])} (${x.pct > 0 ? "+" : ""}${x.pct.toFixed(2)} %)</li>`).join("");
+    let cls = "ok", head = "Matches the CDC.";
+    if (issues.length) { cls = "bad"; head = issues.join(" "); }
+    else if (worst > 3) { cls = "bad"; head = `Up to ${worst.toFixed(1)} % off from today's CDC numbers. That is more than normal revisions explain.`; }
+    else if (diffs.length) { cls = "warn"; head = "Small differences, typical of later CDC revisions."; }
+    const tgt = cdc && !issues.length ? `<br>With today's CDC numbers the target factor would be ${(cdc.target / 1000).toFixed(3)} (reported ${(r.target_milli / 1000).toFixed(3)}).` : "";
+    box.innerHTML = `<div class="result ${cls}">${esc(head)}${tgt}${list ? `<ul>${list}</ul>` : ""}</div>`;
+  } catch (e) {
+    const sum = (() => { const used = Object.fromEntries(Object.entries(r.weeks_used || {}).map(([k, v]) => [dayOf(k), v])); const o = compute(used, dayOf(r.week_ending)); return o && o.recent === r.recent_deaths && o.baseline === r.baseline_deaths && o.target === r.target_milli; })();
+    box.innerHTML = `<div class="result warn">Could not reach the CDC from your browser (${esc(e.message)}). ${sum ? "The reported totals and factor do add up from the listed weeks." : ""} Try the command-line check below.</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function render(items) {
+  const body = $("[data-rows]"), latest = $("[data-latest]");
+  if (!items.length) {
+    body.innerHTML = `<tr><td colspan="5" class="small">No reports yet. The first one appears here as soon as it is sent.</td></tr>`;
+    latest.innerHTML = `<p class="small">No report yet. Reports are sent every Monday at 12:00 UTC.</p>`;
+    return;
+  }
+  const r = items[0], p = pctOf(r);
+  latest.innerHTML = `<div class="figs f4">
+      <div><span>Deaths, 4 weeks</span><b>${fmt(r.recent_deaths)}</b></div>
+      <div><span>3-year average</span><b>${fmt(r.baseline_deaths)}</b></div>
+      <div><span>Difference</span><b class="${p > 0 ? "down" : "up"}">${p > 0 ? "+" : ""}${p.toFixed(2)}%</b></div>
+      <div class="hero"><span>Target factor</span><b>${(r.target_milli / 1000).toFixed(3)}</b></div>
+    </div>
+    <p class="meta">4 weeks ending ${nice(r.week_ending)} · fetched ${nice(r.fetched_at)} · ${r.tx ? "on chain" : "not sent"} · next report Monday, 12:00 UTC</p>
+    <button class="btn" type="button" data-check style="margin-top:14px">Check this report against the CDC</button>
+    <div data-result></div>`;
+  const lb = $("[data-check]", latest);
+  lb.addEventListener("click", () => check(r, $("[data-result]", latest), lb));
+  body.innerHTML = "";
+  for (const it of items) {
+    const q = pctOf(it);
+    const row = document.createElement("tr");
+    row.className = "row"; row.tabIndex = 0; row.setAttribute("aria-expanded", "false");
+    row.innerHTML = `<td>${nice(it.week_ending)}${it.tx ? "" : " <span class='small'>(not sent)</span>"}</td>
+      <td class="r">${fmt(it.recent_deaths)}</td><td class="r hide-sm">${fmt(it.baseline_deaths)}</td>
+      <td class="r ${q > 0 ? "more-up" : "more-down"}">${q > 0 ? "+" : ""}${q.toFixed(2)} %</td>
+      <td class="r"><b>${(it.target_milli / 1000).toFixed(3)}</b></td>`;
+    const more = document.createElement("tr");
+    more.hidden = true;
+    more.innerHTML = `<td colspan="5" class="detail">${detail(it)}</td>`;
+    const toggle = () => { more.hidden = !more.hidden; row.setAttribute("aria-expanded", String(!more.hidden)); };
+    row.addEventListener("click", toggle);
+    row.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggle(); } });
+    const btn = $("[data-check]", more);
+    btn.addEventListener("click", () => check(it, $("[data-result]", more), btn));
+    body.append(row, more);
+  }
+  const ex = EXPLORERS[r.chain_id];
+  $("[data-contract]").innerHTML = `<span>Network</span><span>${ex ? ex[0] : "chain " + esc(r.chain_id)}</span>
+    <span>Oracle contract</span><span class="m">${link(r, "address", r.oracle)}</span>
+    <span>Signer key</span><span class="m">${link(r, "address", r.signer)}</span>
+    <span>Report script</span><span class="m"><a href="/oracle-data/report.py">report.py</a></span>`;
+}
+
+async function load() {
+  if (PREVIEW) { $("[data-preview]").hidden = false; return render(SAMPLE); }
+  try {
+    const res = await fetch(DATA + "index.json", { cache: "no-store" });
+    render(res.status === 404 ? [] : await res.json());
+  } catch {
+    $("[data-rows]").innerHTML = `<tr><td colspan="5" class="small">Reports could not be loaded.</td></tr>`;
+    $("[data-latest]").innerHTML = `<p class="small">Reports could not be loaded.</p>`;
+  }
+}
+
+// The sheet unrolls once, then the register appears like ink.
+const scroll = $("#scroll"), unroll = $("#unroll"), paper = $("#paper");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function inkTargets() {
+  const out = [];
+  const walk = (el) => { for (const c of el.children) { if (c.matches(".head, .pillars, .sect")) walk(c); else out.push(c); } };
+  walk(paper);
+  return out;
+}
+function open() {
+  if (reduce) { paper.classList.remove("blank"); scroll.classList.remove("rolled"); unroll.style.height = "auto"; return; }
+  inkTargets().forEach((el, i) => { el.style.setProperty("--d", Math.min(i * 60, 1000) + "ms"); el.setAttribute(el.matches(".overflow") ? "data-wipe" : "data-ink", ""); });
+  const target = Math.min(paper.offsetHeight, Math.max(260, innerHeight - unroll.getBoundingClientRect().top - 70));
+  scroll.classList.add("thin");
+  unroll.style.transitionDuration = "800ms";
+  unroll.style.height = target + "px";
+  setTimeout(() => {
+    scroll.classList.remove("rolled", "thin");
+    unroll.style.transitionDuration = "0ms"; unroll.style.height = "auto";
+    paper.classList.remove("blank"); paper.classList.add("ink");
+  }, 820);
+}
+
+// Section links: the blood drop follows the section in view.
+const DROP = '<svg class="drop" viewBox="0 0 10 14" aria-hidden="true"><defs><linearGradient id="dg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4b55"/><stop offset=".55" stop-color="#c3151f"/><stop offset="1" stop-color="#6d0610"/></linearGradient></defs><path d="M5 0C5 0 0 6.5 0 9a5 5 0 0 0 10 0C10 6.5 5 0 5 0z" fill="url(#dg)"/><ellipse cx="3.3" cy="9" rx="1.1" ry="1.8" fill="#fff" opacity=".55"/></svg>';
+const tabs = [...document.querySelectorAll(".tab")], tabsEl = $("#tabs"), wrap = $("#tabswrap");
+tabs.forEach((t) => t.insertAdjacentHTML("beforeend", DROP));
+const mark = (id) => tabs.forEach((t) => t.setAttribute("aria-selected", String(t.dataset.sec === id)));
+mark("latest");
+const hint = () => wrap.classList.toggle("more", tabsEl.scrollWidth - tabsEl.clientWidth - tabsEl.scrollLeft > 4);
+tabsEl.addEventListener("scroll", hint, { passive: true }); addEventListener("resize", hint); hint();
+addEventListener("scroll", () => {
+  const off = $(".top").offsetHeight + 40;
+  let cur = "latest";
+  for (const t of tabs) { const s = document.getElementById(t.dataset.sec); if (s && s.getBoundingClientRect().top - off <= 0) cur = t.dataset.sec; }
+  if (tabs.find((t) => t.dataset.sec === cur).getAttribute("aria-selected") !== "true") mark(cur);
+}, { passive: true });
+tabs.forEach((t) => t.addEventListener("click", (e) => {
+  e.preventDefault();
+  const s = document.getElementById(t.dataset.sec);
+  scrollTo({ top: s.getBoundingClientRect().top + scrollY - $(".top").offsetHeight - 16, behavior: reduce ? "auto" : "smooth" });
+  mark(t.dataset.sec);
+}));
+
+load().then(() => setTimeout(open, 400));
+})();
+</script>
+</body>
+</html>

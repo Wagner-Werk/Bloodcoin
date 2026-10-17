@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bloodcoin Whitepaper</title>
+<meta name="description" content="Bloodcoin whitepaper and legal information. Version 0.9, draft, 17 October 2026.">
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+/* A plain white document: black text, one serif face, numbered sections, no decoration. White by request in every color scheme. */
+:root{color-scheme:light; --ink:#111; --soft:#555; --rule:#d9d9d9;}
+html{background:#fff}
+body{background:#fff; color:var(--ink); margin:0; font:17px/1.65 Georgia,"Times New Roman",Times,serif; -webkit-text-size-adjust:100%}
+.doc{max-width:720px; margin:0 auto; padding:56px max(16px,env(safe-area-inset-left,0px)) 80px max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:34px; line-height:1.15; font-weight:normal; margin:0 0 6px; letter-spacing:.01em}
+.meta{color:var(--soft); font-size:14.5px; margin:0 0 28px}
+h2{font-size:21px; font-weight:bold; margin:44px 0 10px; line-height:1.3}
+h3{font-size:17px; font-weight:bold; margin:24px 0 6px}
+p,ul,ol,table{margin:0 0 14px}
+ul,ol{padding-left:22px}
+li{margin:0 0 6px}
+a{color:var(--ink); text-decoration:underline; text-underline-offset:2px}
+hr{border:0; border-top:1px solid var(--rule); margin:36px 0}
+.notice{border:1px solid var(--ink); padding:16px 18px; margin:0 0 30px; font-size:15.5px}
+.notice p:last-child{margin:0}
+.toc{font-size:15.5px; columns:2; column-gap:32px; padding-left:20px}
+.toc li{margin:0 0 3px; break-inside:avoid}
+table{width:100%; border-collapse:collapse; font-size:15px}
+th,td{text-align:left; vertical-align:top; padding:7px 10px 7px 0; border-bottom:1px solid var(--rule)}
+th{font-weight:bold; border-bottom:1px solid var(--ink)}
+td.r,th.r{text-align:right; padding-right:0}
+.wrap{overflow-x:auto}
+code{font:14px ui-monospace,Menlo,Consolas,monospace; word-break:break-all}
+.small{font-size:14.5px; color:var(--soft)}
+@media (max-width:560px){ body{font-size:16px} h1{font-size:28px} .toc{columns:1} .doc{padding-top:36px} }
+@media print{ .doc{padding:0; max-width:none} a{text-decoration:none} h2{break-after:avoid} }
+</style>
+</head>
+<body>
+<main class="doc">
+<h1>Bloodcoin</h1>
+<p class="meta">Whitepaper and legal information · Version 0.9 (draft) · 17 October 2026</p>
+
+<div class="notice" role="note">
+<p><b>Important notice.</b> Bloodcoin is still in development. BCUS is not yet available for purchase. This document is not an offer to sell, a solicitation to buy, a prospectus or investment advice. It makes no promise of value, price or return. Bloodcoin is not offered to persons in the United States. Read section 2 before anything else.</p>
+</div>
+
+<h2 style="margin-top:0">Contents</h2>
+<ol class="toc">
+<li><a href="#s1">Summary</a></li>
+<li><a href="#s2">Legal notice and disclaimers</a></li>
+<li><a href="#s3">Purpose</a></li>
+<li><a href="#s4">The Bloodcoin chain</a></li>
+<li><a href="#s5">The BCUS token on Base</a></li>
+<li><a href="#s6">The mortality oracle</a></li>
+<li><a href="#s7">Supply and allocation</a></li>
+<li><a href="#s8">Staking</a></li>
+<li><a href="#s9">The demo exchange</a></li>
+<li><a href="#s10">Keys, control and trust</a></li>
+<li><a href="#s11">Risks</a></li>
+<li><a href="#s12">Regulatory status</a></li>
+<li><a href="#s13">Conditions before mainnet</a></li>
+<li><a href="#s14">Data protection</a></li>
+<li><a href="#s15">Publisher and contact</a></li>
+<li><a href="#s16">Version history</a></li>
+</ol>
+
+<h2 id="s1">1. Summary</h2>
+<p>Bloodcoin is an open-source project that records the weekly number of deaths in the United States, as published by the Centers for Disease Control and Prevention (CDC), on a public ledger. The same figure adjusts how many new coins are issued each week, within fixed limits.</p>
+<p>The project has two technical parts. The first is the <b>Bloodcoin chain</b>, a small proof-of-work blockchain with its own explorer and a demo exchange that uses test money. The second is <b>BCUS</b>, a token contract on the Base network. BCUS currently exists only on the Base Sepolia test network, where it has no value.</p>
+<p>No coins or tokens are sold. There is no pool, no pre-sale and no fundraising.</p>
+
+<h2 id="s2">2. Legal notice and disclaimers</h2>
+<ol>
+<li><b>No offer.</b> This document is for information only. It is not an offer or solicitation to buy or sell any token, security or financial instrument in any jurisdiction, and it is not a prospectus or key information document under Swiss or any other law.</li>
+<li><b>No investment advice.</b> Nothing here is investment, legal or tax advice. Do not acquire any token on the basis of this document.</li>
+<li><b>Not available for purchase.</b> BCUS is not yet available for purchase. Tokens on test networks and dollar balances on the demo exchange have no monetary value and cannot be exchanged for money.</li>
+<li><b>No promise of value or return.</b> The publisher does not promise, and nobody is entitled to expect, any price, value, profit, interest or return. Cryptocurrencies can lose their entire value.</li>
+<li><b>No claims.</b> BCUS and Bloodcoin give the holder no claim against the publisher or anyone else: no right to repayment, dividends, interest, profit share, voting or redemption.</li>
+<li><b>Excluded persons.</b> Bloodcoin is not offered to persons who are citizens or residents of, or located in, the United States. It is not offered to the public in the European Union. Anyone accessing it from a jurisdiction where its use is restricted does so on their own responsibility.</li>
+<li><b>Not legal tender.</b> Bloodcoin and BCUS are not legal tender and are not backed by any state, bank or asset.</li>
+<li><b>Forward-looking statements.</b> Plans in this document can change or be abandoned at any time. They are not commitments.</li>
+<li><b>Legal review pending.</b> The regulatory classification of BCUS under Swiss law is being reviewed by counsel. Until that review is complete, nothing will be sold. See section 12.</li>
+<li><b>Software as is.</b> The software is open source under the MIT licence and provided as is, without warranty of any kind. It has not been audited by an independent firm.</li>
+<li><b>Applicable law.</b> This document and the websites are subject to Swiss law.</li>
+</ol>
+
+<h2 id="s3">3. Purpose</h2>
+<p>Most cryptocurrencies issue new coins on a fixed schedule that ignores the world around them. Bloodcoin ties its issuance to one of the most carefully recorded public statistics there is: weekly deaths in the United States. Every week the count is written into the ledger, where it stays permanently and can be checked by anyone.</p>
+<p>The project is also an art chronicle. Each report is a trace of the dead that the chain keeps. The project treats this data as a public record, with respect. It does not collect personal data about any deceased person; it uses only national weekly totals published by the CDC.</p>
+
+<h2 id="s4">4. The Bloodcoin chain</h2>
+<p>The Bloodcoin chain is a proof-of-work blockchain modelled on Bitcoin. Its source code is public.</p>
+<div class="wrap"><table>
+<tbody>
+<tr><th scope="row">Name · ticker</th><td>Bloodcoin · BCUS</td></tr>
+<tr><th scope="row">Consensus</th><td>Proof of work, SHA-256</td></tr>
+<tr><th scope="row">Block time</th><td>30 seconds on average; difficulty adjusts every 20 blocks</td></tr>
+<tr><th scope="row">Maximum supply</th><td>21,000,000 BCUS, fixed in the protocol</td></tr>
+<tr><th scope="row">Smallest unit</th><td>1 drop = 0.00000001 BCUS</td></tr>
+<tr><th scope="row">Block reward</th><td>50 BCUS × mortality factor, halving every 210,000 blocks</td></tr>
+<tr><th scope="row">Mortality factor</th><td>0.5 to 1.5; one percent more deaths than the previous week lowers the reward by ten percent, one percent fewer raises it by the same amount</td></tr>
+<tr><th scope="row">Signatures</th><td>Elliptic-curve cryptography (secp256k1)</td></tr>
+<tr><th scope="row">Addresses</th><td>Start with <code>BLD</code></td></tr>
+<tr><th scope="row">Genesis</th><td>27 September 2026</td></tr>
+</tbody>
+</table></div>
+<p><b>Status.</b> The network is young and currently run by very few nodes, operated by the publisher. Whoever controls most of the computing power controls the chain. Coins on this chain are created only by mining. The public explorer is at <a href="https://node.bloodcoin-us.com">node.bloodcoin-us.com</a>.</p>
+<p>The chain uses a simpler week-over-week mortality rule than the BCUS token described in section 6. The two are separate systems.</p>
+
+<h2 id="s5">5. The BCUS token on Base</h2>
+<p>BCUS is also implemented as a token contract (ERC-20) on Base, an Ethereum layer-2 network. It consists of four contracts. All parameters are fixed when the contracts are deployed and cannot be changed afterwards.</p>
+<div class="wrap"><table>
+<thead><tr><th>Contract</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td>BloodcoinToken</td><td>ERC-20 token, 18 decimals, hard cap 21,000,000 BCUS, no owner. Only the emission contract can create new tokens.</td></tr>
+<tr><td>MortalityEmission</td><td>Creates new tokens each week according to the schedule in section 7, multiplied by the mortality factor. No owner.</td></tr>
+<tr><td>SignedMortalityOracle</td><td>Accepts weekly mortality reports only when they are signed by the oracle key (section 6).</td></tr>
+<tr><td>BcusStaking</td><td>Receives all newly emitted tokens and distributes them over seven days to participants (section 8).</td></tr>
+</tbody>
+</table></div>
+<p><b>Status.</b> BCUS runs only on the Base Sepolia test network. Its contracts there are verified and publicly readable. No BCUS exists on Base mainnet. Test-network tokens have no value.</p>
+
+<h2 id="s6">6. The mortality oracle</h2>
+<h3>6.1 Data source</h3>
+<p>The oracle uses the weekly death counts for the United States published by the CDC on data.cdc.gov. Recent weeks are revised for some time after publication, so only weeks that are at least eight weeks old are used.</p>
+<h3>6.2 Calculation</h3>
+<ol>
+<li><b>Recent deaths</b>: the total of the four most recent usable weeks.</li>
+<li><b>Baseline</b>: the average total of the same four calendar weeks in the three previous years.</li>
+<li><b>Deviation</b>: if recent deaths differ from the baseline by three percent or less, the target factor is 1.0. Beyond that, each further percent of excess mortality lowers the target by five percent, and each percent below the baseline raises it by five percent. The target always stays between 0.5 and 1.5.</li>
+<li><b>Step limit</b>: the actual factor moves towards the target by at most 0.05 per report. A single report, even a wrong one, can therefore change issuance by at most five percent.</li>
+<li><b>Plausibility checks</b>: the contract rejects reports outside 80,000 to 1,000,000 deaths and reports where recent deaths and baseline differ by more than a factor of two.</li>
+</ol>
+<h3>6.3 Signed reports and trust model</h3>
+<p>Each Monday a script on the publisher's server reads the CDC data, calculates the figures, signs them with the oracle key (EIP-712) and submits them to the oracle contract. The signing key is held by the publisher and is used for nothing else.</p>
+<p><b>Honest limitation.</b> Whoever holds the oracle key could submit plausible but false figures. The contract only catches gross errors. The protection is transparency: every report, together with the raw CDC data it was calculated from, is published on the <a href="https://bloodcoin-us.com/oracle">oracle page</a>, and anyone can check it against data.cdc.gov directly in the browser. The oracle can be retired permanently with a signed message, after which it accepts no further reports.</p>
+
+<h2 id="s7">7. Supply and allocation</h2>
+<div class="wrap"><table>
+<thead><tr><th>Item</th><th class="r">Amount</th><th>Note</th></tr></thead>
+<tbody>
+<tr><td>Hard cap</td><td class="r">21,000,000 BCUS</td><td>Can never be exceeded</td></tr>
+<tr><td>Founder allocation</td><td class="r">1,000,000 BCUS</td><td>Created at deployment; planned to be locked for 730 days in a lock contract with a fixed beneficiary (section 13)</td></tr>
+<tr><td>Weekly base emission</td><td class="r">50,480.77 BCUS</td><td>10,500,000 ÷ 208 weeks, before the mortality factor</td></tr>
+<tr><td>Halving</td><td class="r">every 208 weeks</td><td>About every four years</td></tr>
+<tr><td>Recipient of emission</td><td class="r">Staking contract</td><td>Fixed at deployment</td></tr>
+</tbody>
+</table></div>
+<p>There is no pre-sale, no private sale, no team allocation beyond the founder allocation and no marketing reserve. A mortality factor below 1.0 means fewer tokens are created in that week; the difference is not created later.</p>
+
+<h2 id="s8">8. Staking</h2>
+<p>All newly emitted BCUS go to the staking contract, which distributes each week's emission evenly over seven days among the addresses that have deposited BCUS, in proportion to their deposit. Deposits can be withdrawn at any time.</p>
+<p>The amount anyone receives depends on the emission, the mortality factor and how much others have deposited. It is not fixed, not guaranteed and not a return promised by the publisher. Figures shown on any staking page are estimates of the mechanism only. Whether staking affects the regulatory classification of BCUS is part of the legal review (section 12).</p>
+
+<h2 id="s9">9. The demo exchange</h2>
+<p>The exchange at <a href="https://exchange.bloodcoin-us.com">exchange.bloodcoin-us.com</a> is a demonstration. Users trade coins of the Bloodcoin chain against dollar balances that are test money with no value. Dollars cannot be paid in or out.</p>
+<ul>
+<li>Coins deposited from the Bloodcoin chain are credited after 20 confirmations and can be withdrawn at any time, for a fee of 0.001 BCUS.</li>
+<li>Withdrawals are on-chain transactions and cannot be reversed.</li>
+<li>The exchange publishes its reserves so that anyone can check that customer balances are covered.</li>
+<li>The exchange does not trade BCUS tokens on Base and does not handle real money.</li>
+</ul>
+
+<h2 id="s10">10. Keys, control and trust</h2>
+<div class="wrap"><table>
+<thead><tr><th>Element</th><th>Who controls it</th></tr></thead>
+<tbody>
+<tr><td>Token and emission contracts</td><td>Nobody. No owner, no upgrade function, parameters fixed.</td></tr>
+<tr><td>Oracle signing key</td><td>The publisher. Can submit reports within the limits in section 6; cannot change the contracts.</td></tr>
+<tr><td>Deployment key</td><td>Used once to deploy. Holds no rights after setup.</td></tr>
+<tr><td>Founder allocation</td><td>Planned: a lock contract with a fixed beneficiary that releases nothing before 730 days have passed.</td></tr>
+<tr><td>Bloodcoin chain</td><td>Whoever controls the majority of mining power; today that is the publisher.</td></tr>
+<tr><td>Websites and demo exchange</td><td>The publisher.</td></tr>
+</tbody>
+</table></div>
+
+<h2 id="s11">11. Risks</h2>
+<ul>
+<li><b>Total loss.</b> Any token can lose its entire value or never have one.</li>
+<li><b>Software errors.</b> The contracts and the chain may contain errors that lead to loss of tokens. No independent audit has been completed.</li>
+<li><b>Oracle risk.</b> The oracle depends on one key and on CDC data. Wrong, delayed or missing data, or misuse of the key, affects issuance within the stated limits.</li>
+<li><b>Centralisation.</b> The Bloodcoin chain runs on very few nodes. It can be stopped, rewritten or attacked by whoever controls the majority of mining power.</li>
+<li><b>Concentration.</b> The founder allocation is large compared with early emission. If staked, it would receive a large share of new tokens.</li>
+<li><b>Liquidity.</b> There is no market. There may never be one.</li>
+<li><b>Regulation.</b> Laws and their interpretation can change and may restrict or prohibit the project, its use or its transfer.</li>
+<li><b>Key loss.</b> Lost private keys cannot be recovered by anyone.</li>
+<li><b>Reputation and access.</b> Because the project uses mortality data, banks, exchanges, app stores and platforms may refuse to work with it.</li>
+<li><b>Tax.</b> Holding or receiving tokens can have tax consequences. Users are responsible for their own taxes.</li>
+<li><b>Project risk.</b> The project is run by one person. It can be delayed, changed or discontinued.</li>
+</ul>
+
+<h2 id="s12">12. Regulatory status</h2>
+<p>The publisher is resident in Switzerland. Under the practice of the Swiss Financial Market Supervisory Authority (FINMA), tokens are classified by function as payment, utility or asset tokens. BCUS grants no claim against anyone, which points towards a payment token; whether staking changes that assessment is open.</p>
+<ul>
+<li>A Swiss law firm has been asked to review the classification and the obligations under the Anti-Money Laundering Act (AMLA). The review is not complete.</li>
+<li>No BCUS will be sold, and no trading pool will be opened by the publisher, unless the review permits it and any required affiliation with a self-regulatory organisation is in place.</li>
+<li>Bloodcoin is not offered to persons in the United States and not offered to the public in the European Union.</li>
+<li>This document is not a crypto-asset whitepaper under the EU Markets in Crypto-Assets Regulation (MiCA), because no offer to the public in the EU is made.</li>
+</ul>
+
+<h2 id="s13">13. Conditions before mainnet</h2>
+<p>BCUS will only be deployed on Base mainnet once all of the following are met. There is no date.</p>
+<ol>
+<li>The legal review in section 12 is complete and its result is followed.</li>
+<li>A security review of the contracts has been carried out and its findings fixed.</li>
+<li>The founder allocation is placed in the 730-day lock contract at deployment.</li>
+<li>Several weekly oracle reports have run correctly on the test network.</li>
+<li>All public texts are checked so that none implies a value, yield or investment.</li>
+<li>The exclusion of persons in the United States is in place.</li>
+</ol>
+
+<h2 id="s14">14. Data protection</h2>
+<p>The project processes personal data only where needed: email address and password hash for demo exchange accounts, and email address for the newsletter if someone signs up. Data is stored on a server in Germany (Hetzner, Nuremberg) and is not sold or shared for advertising. The websites use no tracking and no externally hosted fonts. Details are in the <a href="https://bloodcoin-us.com/legal.html">legal notice and privacy policy</a>. Requests: <a href="mailto:contact@bloodcoin-us.com">contact@bloodcoin-us.com</a>.</p>
+
+<h2 id="s15">15. Publisher and contact</h2>
+<p>Michel Wagner, Lyss, Switzerland<br>
+Email: <a href="mailto:contact@bloodcoin-us.com">contact@bloodcoin-us.com</a><br>
+Full postal address: see the <a href="https://bloodcoin-us.com/legal.html">legal notice</a>.</p>
+<ul>
+<li>Website: <a href="https://bloodcoin-us.com">bloodcoin-us.com</a></li>
+<li>Explorer: <a href="https://node.bloodcoin-us.com">node.bloodcoin-us.com</a></li>
+<li>Oracle reports: <a href="https://bloodcoin-us.com/oracle">bloodcoin-us.com/oracle</a></li>
+<li>Source code: <a href="https://github.com/Wagnermichel88/Bloodcoin">github.com/Wagnermichel88/Bloodcoin</a> (MIT licence)</li>
+</ul>
+
+<h2 id="s16">16. Version history</h2>
+<div class="wrap"><table>
+<thead><tr><th>Version</th><th>Date</th><th>Change</th></tr></thead>
+<tbody>
+<tr><td>0.9</td><td>17 October 2026</td><td>First public draft. Subject to legal review.</td></tr>
+</tbody>
+</table></div>
+
+<hr>
+<p class="small">Bloodcoin is still in development. BCUS is not yet available for purchase. Not investment advice. Not offered to persons in the United States.</p>
+</main>
+</body>
+</html>
