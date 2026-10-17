@@ -1,0 +1,109 @@
+/* Bloodcoin book look for the exchange: night desk, leather header, paper cards, book typefaces.
+   Loaded after the page's own <style>; it only overrides. Fonts come from bloodcoin-us.com/assets/book/fonts.css. */
+:root{
+  --night:#0a0c13; --night-2:#141a2b;
+  --paper:#eadfc4; --paper-2:#dfcfa8; --ink:#2b2018; --ink-soft:#6a5643; --rule:rgba(43,32,24,.22);
+  --blood:#8f1016; --blood-hi:#b31c23; --gold-b:#c9a25a; --leather:#24090b; --leather-2:#3d1113; --ledger-green:#2f6b4c;
+  --f-display:"IM Fell English SC","IM Fell English",Georgia,"Times New Roman",serif;
+  --f-italic:"IM Fell English",Georgia,serif;
+  --f-body:"EB Garamond",Garamond,Georgia,"Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  /* page-level tokens (on the dark desk) */
+  --bg:var(--night); --bg2:#10131d; --text:#efe4c9; --muted:#c3b28c; --faint:#8d7d60;
+  --line:rgba(201,162,90,.22); --line2:rgba(201,162,90,.38);
+  --red:var(--blood); --red-hi:#d9474d; --red-deep:#5e0a0e; --red-soft:rgba(143,16,22,.14);
+  --gold:var(--gold-b); --radius:3px; --shadow:0 18px 40px -22px rgba(0,0,0,.85);
+}
+html{background:var(--night)}
+body{
+  font:17px/1.5 var(--f-body);
+  font-variant-numeric:lining-nums;
+  background:
+    radial-gradient(ellipse 60% 40% at 50% 0%, rgba(223,122,46,.10), transparent 70%),
+    linear-gradient(rgba(201,162,90,.045) 1px, transparent 1px) 0 0/44px 44px,
+    linear-gradient(90deg, rgba(201,162,90,.045) 1px, transparent 1px) 0 0/44px 44px,
+    radial-gradient(ellipse at 50% 0%, var(--night-2), var(--night) 70%);
+  background-color:var(--night);
+}
+a{color:var(--gold-b)}
+.demo{font:500 12px/1.4 var(--f-mono); background:rgba(143,16,22,.22); color:#e8c88f; border-bottom-color:rgba(201,162,90,.25)}
+.demo b{color:var(--gold-b); letter-spacing:.12em}
+
+/* header as a leather spine */
+header{background:linear-gradient(180deg,var(--leather-2),var(--leather)); border-bottom:1px solid rgba(201,162,90,.4); box-shadow:0 1px 0 rgba(201,162,90,.15), 0 8px 20px -12px #000}
+.brand{font:400 22px/1 var(--f-display); letter-spacing:.03em; color:#e2c07a}
+.brand em{color:#e2c07a}
+.brand svg{filter:none}
+.pill{font:500 10px var(--f-mono); color:var(--gold-b); border-color:rgba(201,162,90,.45); border-radius:2px}
+nav button,#logout{font:italic 16px var(--f-italic); color:#d7c39a; text-transform:none; letter-spacing:0; padding:8px 12px}
+nav button:hover, nav button.on{background:rgba(201,162,90,.10); color:#f3e6c4}
+nav button.on{box-shadow:inset 0 -2px 0 var(--gold-b)}
+.ext{font:italic 16px var(--f-italic); color:#d7c39a}
+.ext:hover{background:rgba(201,162,90,.10); color:#f3e6c4}
+
+/* controls */
+button{border-radius:2px; background:var(--blood); font:600 14px/1 var(--f-body); letter-spacing:.07em; text-transform:uppercase; padding:12px 18px; color:#f6ecd6}
+button:hover{background:var(--blood-hi); filter:none}
+button.ghost{background:transparent; color:var(--muted); border-color:var(--line2); text-transform:none; letter-spacing:0; font-style:italic; font-family:var(--f-italic)}
+button.buy{background:var(--ledger-green); color:#f3ead4}
+button.sell{background:var(--blood)}
+.tabs button{text-transform:none; letter-spacing:0; font:italic 16px var(--f-italic)}
+input,select{border-radius:0; border:none; border-bottom:1px solid var(--ink); background:rgba(255,255,255,.35); color:var(--ink); font:17px var(--f-body); color-scheme:light}
+input:focus{border-color:var(--blood); box-shadow:0 2px 0 var(--blood)}
+input::placeholder{color:#9a8768}
+label{font:500 11px var(--f-mono); letter-spacing:.12em; text-transform:uppercase}
+
+/* paper: every card, step and figure box is a book page */
+.card,.step,.kpi,.depbox,.tabs,.msg,code{
+  --text:var(--ink); --muted:var(--ink-soft); --faint:#8a7558; --line:var(--rule); --line2:rgba(43,32,24,.35);
+  --bg2:rgba(255,255,255,.28); --panel2:rgba(43,32,24,.07); --red-hi:var(--blood); --buy:var(--ledger-green); --sell:var(--blood);
+  --buy-soft:rgba(47,107,76,.12); --sell-soft:rgba(143,16,22,.10);
+  color:var(--ink);
+}
+.card,.step{
+  background:
+    radial-gradient(circle at 16% 20%, rgba(140,96,40,.08) 0 3%, transparent 4%),
+    radial-gradient(circle at 82% 78%, rgba(140,96,40,.07) 0 2.5%, transparent 3.5%),
+    radial-gradient(ellipse at 50% 50%, var(--paper) 55%, var(--paper-2) 100%);
+  border:1px solid rgba(120,90,50,.35); border-radius:2px;
+  box-shadow:3px 3px 0 -1px #cdb68c, 0 20px 40px -24px #000;
+}
+.stat{background:radial-gradient(ellipse at 50% 50%, var(--paper) 55%, var(--paper-2) 100%)}
+.kpi{background:rgba(255,255,255,.3); border-color:var(--rule); border-radius:2px}
+.card h2{font:400 20px/1.1 var(--f-display); color:var(--ink); letter-spacing:.01em}
+.card h2 svg{color:var(--blood)}
+.stat h2{font:italic 15px var(--f-italic); color:var(--ink-soft)}
+.big{font-family:var(--f-display); font-weight:400; letter-spacing:0; color:var(--ink)}
+th{font:500 10.5px var(--f-mono); color:var(--ink-soft); border-bottom:1px solid var(--ink)}
+td{border-bottom-color:var(--rule)}
+table{font-variant-numeric:lining-nums tabular-nums}
+.mono{font-family:var(--f-mono)}
+.chip{border-radius:2px; font:500 11px var(--f-mono); background:rgba(10,12,19,.5); color:var(--muted); border-color:var(--line2)}
+.card .chip{background:rgba(255,255,255,.3); color:var(--ink-soft); border-color:var(--rule)}
+.chip.ok{color:var(--ledger-green); border-color:rgba(47,107,76,.35); background:rgba(47,107,76,.10)}
+.dot{background:#6fbf8f}
+.stat .ic{border-radius:50%; background:rgba(143,16,22,.10); color:var(--blood)}
+.stat .ic.g{background:rgba(47,107,76,.12); color:var(--ledger-green)} .stat .ic.y{background:rgba(201,162,90,.18); color:#8a6420}
+
+/* landing */
+.slogan{font:400 clamp(44px,7vw,84px)/1 var(--f-display); letter-spacing:.01em; color:#efe4c9}
+.slogan em{font-style:normal; background:none; -webkit-background-clip:initial; background-clip:initial; color:#d9474d}
+.hero2 .lead{font:italic 20px/1.45 var(--f-italic); color:var(--muted)}
+.cta button{box-shadow:none}
+.btn2{border-radius:2px; border-color:var(--line2); font:italic 17px var(--f-italic); color:var(--text)}
+.coinwrap::before{background:radial-gradient(circle, rgba(201,162,90,.22), rgba(143,16,22,.12) 55%, transparent 70%)}
+.coin{animation:none}
+.features{color:var(--ink-soft)} .features svg{color:var(--blood)}
+.auth{box-shadow:3px 3px 0 -1px #cdb68c, 0 30px 60px -30px #000}
+.auth h2{font-size:26px}
+.about{border-top:1px solid var(--line)}
+.eyebrow{font:500 12px var(--f-mono); color:#d9474d}
+.h2{font:400 clamp(28px,3.6vw,40px)/1.1 var(--f-display); letter-spacing:.01em}
+.intro{font:19px/1.5 var(--f-body); color:var(--muted)}
+.step b{border-radius:0; background:none; border:none; width:auto; height:auto; display:block; font:italic 30px/1 var(--f-italic); color:var(--blood)}
+.step h3{font:400 19px var(--f-display); color:var(--ink)}
+.step p{color:var(--ink-soft); font-size:16px}
+.about-grid p{font-size:16px}
+.facts dt{font:italic 17px var(--f-italic); color:var(--ink-soft)}
+.disclaimer{font-size:14px; color:var(--faint)}
+.mid,.total{border-color:var(--rule)}
