@@ -15,7 +15,7 @@ Stand: 11.10.2026. Entwurf, **nicht auditiert, nicht deployt**. Vor echtem Geld:
 | `src/FounderLock.sol` | Sperrvertrag für die Gründer-BCUS (OpenZeppelin-`VestingWallet` mit Dauer 0): 2 Jahre ab Deploy gesperrt, danach alles an den festen Empfänger. Kein Admin, Frist und Empfänger unveränderlich, frühe Abholung scheitert. |
 | `script/DeploySigned.s.sol` | Plan B: Oracle (signierter Melder), Staking, Sperrvertrag, Emission und Token in einem Durchlauf. Die Startmenge geht direkt in den Sperrvertrag. |
 | `oracle/sim/` | Simulation der Faktor-Regel an echten US-Wochenzahlen 2015 bis 2024 (`python3 -I oracle/sim/simulate.py`). |
-| `test/` | 56 Contract-Tests (21 Token/Emission/Oracle, 10 Staking, 16 Plan-B-Melder, 9 Sperrvertrag). Der Workflow hat eigene Tests in `oracle/cre-workflow/`. |
+| `test/` | 62 Contract-Tests (21 Token/Emission/Oracle, 11 Staking, 20 Plan-B-Melder, 9 Sperrvertrag, 1 Gründer-Szenario). Der Workflow hat eigene Tests in `oracle/cre-workflow/`. |
 
 ## Regeln, die im Code stehen
 
@@ -38,7 +38,10 @@ Stand: 11.10.2026. Entwurf, **nicht auditiert, nicht deployt**. Vor echtem Geld:
   7 Tage gestreamt (bewährtes Verfahren von Synthetix). Wer kurz vor einer Ausgabe mit viel Geld
   einsteigt und gleich wieder raus geht, bekommt so gut wie nichts (Test
   `testFlashStakerGetsAlmostNothing`). Läuft der Strom, während niemand gestakt hat, wird er
-  aufgehoben und bei der nächsten Ausgabe mitverteilt.
+  verbrannt (an `0x…dEaD`) und nicht aufgehoben. Früher sammelte sich dieser Teil für den ersten
+  Staker an. Weil beim Deploy alle Start-BCUS zwei Jahre im FounderLock liegen und sonst niemand BCUS
+  hat, wäre das zwangsläufig der Gründer gewesen, mit rund 5,3 Mio. BCUS
+  (`test/FounderScenario.t.sol`).
 
 ## Entscheidungen, die ich als Standard gesetzt habe
 
@@ -85,7 +88,7 @@ Rechner aus und schickt das Ergebnis über Chainlinks *Simulations-Forwarder* an
    export CRE_FORWARDER=0x...
    export INITIAL_HOLDER=0x...
    export INITIAL_MINT_BCUS=1000000
-   forge script script/Deploy.s.sol --rpc-url https://base-sepolia-rpc.publicnode.com --broadcast --private-key $DEPLOYER_KEY
+   forge script script/Deploy.s.sol --rpc-url https://base-sepolia-rpc.publicnode.com --broadcast --account deployer
    ```
 3. `cre init` (TypeScript), die Dateien aus `oracle/cre-workflow/` in den Workflow-Ordner kopieren,
    in `config.staging.json` die Oracle-Adresse eintragen.

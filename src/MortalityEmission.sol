@@ -20,6 +20,10 @@ import {BloodcoinToken} from "./BloodcoinToken.sol";
 ///         vor dem Umstellen erst alle bereits abgelaufenen Epochen mit dem alten Faktor ab.
 ///         Wann jemand `mint()` aufruft, ändert die Menge deshalb nicht.
 ///
+///         Wird das Orakel abgeschaltet, setzt es den Faktor einmalig auf 1,0 zurück
+///         (`resetFactor`). Sonst könnte ein Dieb des Orakel-Schlüssels den Faktor über zehn
+///         Meldungen an den Rand treiben und ihn dann mit dem Abschalten dort festschreiben.
+///
 ///         Alle Parameter sind unveränderlich. Es gibt keinen Besitzer.
 contract MortalityEmission {
     uint256 public constant EPOCH = 1 weeks;
@@ -50,6 +54,7 @@ contract MortalityEmission {
         uint256 indexed weekEnding, uint256 recentDeaths, uint256 baselineDeaths, uint256 targetMilli, uint256 factorMilli
     );
     event Minted(address indexed to, uint256 amount, uint256 settledEpochs);
+    event FactorReset();
 
     error OnlyOracle();
     error WeekNotNewer();
@@ -105,6 +110,17 @@ contract MortalityEmission {
         targetMilli = target;
         factorMilli = stepToward(factorMilli, target);
         emit MortalityReported(weekEnding, recentDeaths, baselineDeaths, target, factorMilli);
+    }
+
+    /// @notice Faktor und Ziel zurück auf 1,0. Nur das Orakel; der signierte Melder ruft das
+    ///         beim Abschalten auf. Bereits abgelaufene Epochen werden vorher mit dem alten Faktor
+    ///         abgerechnet.
+    function resetFactor() external {
+        if (msg.sender != oracle) revert OnlyOracle();
+        _settle();
+        factorMilli = 1000;
+        targetMilli = 1000;
+        emit FactorReset();
     }
 
     // ------------------------------------------------------------------ Ausgabe

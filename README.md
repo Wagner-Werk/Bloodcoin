@@ -17,7 +17,7 @@ Detailed documentation is in German: [README.de.md](README.de.md) (contracts, de
 |---|---|
 | `BloodcoinToken` | ERC-20 "Bloodcoin" (BCUS), 18 decimals, hard cap 21 million. No owner, no pause, no blacklist. Only the emission contract can mint. |
 | `MortalityEmission` | Mints a fixed weekly amount on a Bitcoin-like halving schedule (every 208 weeks), multiplied by a mortality factor between 0.5 and 1.5. No owner, all parameters immutable. |
-| `BcusStaking` | Receives all new BCUS and streams them to stakers pro rata over 7 days. |
+| `BcusStaking` | Receives all new BCUS and streams them to stakers pro rata over 7 days. What streams while nobody stakes is burned, not saved for the first staker. |
 | `SignedMortalityOracle` | Accepts mortality reports signed by one fixed key (EIP-712). |
 | `CreMortalityOracle` | Alternative: accepts reports from a Chainlink CRE workflow (`oracle/cre-workflow`). |
 
@@ -37,7 +37,8 @@ the contract only rejects absurd values. The safeguards are:
 - Anyone can check a report against the CDC, either with the button on the public page (it
   queries data.cdc.gov from the visitor's browser) or with `python3 oracle/signed/report.py verify <report>.json`.
 - The signing key is immutable and cannot be swapped silently. `retire()` can only switch the
-  oracle off for good, after which emission continues at the last factor.
+  oracle off for good. It resets the factor to 1.0, so a stolen key cannot push the factor to an
+  extreme and then lock it there.
 - The founder's initial BCUS do not go to the founder's address. `script/DeploySigned.s.sol` mints
   them into `src/FounderLock.sol` (OpenZeppelin `VestingWallet` used as a timelock): locked for 2 years
   from deployment, then released in full to one fixed address. No admin, no early release, and
