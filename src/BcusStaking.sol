@@ -20,8 +20,8 @@ interface IEmission {
 ///         Läuft der Strom, während niemand gestakt hat, wird dieser Teil verbrannt (an BURN
 ///         geschickt) und nicht aufgehoben. Sonst sammelt sich alles, was ausgegeben wird, solange
 ///         noch niemand BCUS hat, in einem Topf, und der erste Staker bekäme ihn ganz. Beim Deploy
-///         liegen alle Start-BCUS zwei Jahre im FounderLock, dieser erste Staker wäre also der
-///         Gründer mit rund zwei Jahren Emission.
+///         liegen alle Start-BCUS im FounderLock und sonst hat niemand BCUS, dieser erste Staker
+///         wäre also der Gründer gewesen.
 ///
 ///         Einzahlen, Abheben und Abholen geht jederzeit und ohne Sperrfrist. Es gibt keinen
 ///         Besitzer. `bind` kann nur der Deployer genau einmal aufrufen.

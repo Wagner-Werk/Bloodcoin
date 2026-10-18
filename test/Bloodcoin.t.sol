@@ -115,10 +115,10 @@ contract BloodcoinTest is Test {
     }
 
     function testHalving() public {
-        assertEq(em.epochEmission(207), em.BASE_EMISSION());
-        assertEq(em.epochEmission(208), em.BASE_EMISSION() / 2);
-        assertEq(em.epochEmission(416), em.BASE_EMISSION() / 4);
-        assertEq(em.epochEmission(64 * 208), 0);
+        assertEq(em.epochEmission(415), em.BASE_EMISSION());
+        assertEq(em.epochEmission(416), em.BASE_EMISSION() / 2);
+        assertEq(em.epochEmission(832), em.BASE_EMISSION() / 4);
+        assertEq(em.epochEmission(64 * 416), 0);
     }
 
     function testReportSettlesOldEpochsAtOldFactor() public {

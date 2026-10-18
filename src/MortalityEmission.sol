@@ -29,8 +29,8 @@ import {BloodcoinToken} from "./BloodcoinToken.sol";
 ///         Alle Parameter sind unveränderlich. Es gibt keinen Besitzer.
 contract MortalityEmission {
     uint256 public constant EPOCH = 1 weeks;
-    /// Erste Halbierungsperiode: 10,5 Mio. BCUS über 208 Wochen (rund 4 Jahre).
-    uint256 public constant HALVING_EPOCHS = 208;
+    /// Erste Halbierungsperiode: 10,5 Mio. BCUS über 416 Wochen (rund 8 Jahre).
+    uint256 public constant HALVING_EPOCHS = 416;
     uint256 public constant BASE_EMISSION = 10_500_000e18 / HALVING_EPOCHS;
 
     uint256 public constant LAG = 8 weeks;          // CDC-Zahlen sind vorher unvollständig

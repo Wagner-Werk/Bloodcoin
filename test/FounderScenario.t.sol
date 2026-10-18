@@ -8,8 +8,9 @@ import {BcusStaking} from "../src/BcusStaking.sol";
 import {FounderLock} from "../src/FounderLock.sol";
 
 /// Aufbau wie DeploySigned: alle Start-BCUS im FounderLock, niemand sonst hat BCUS.
-/// Früher sammelte das Staking zwei Jahre Emission (rund 5,25 Mio. BCUS) für den ersten Staker,
-/// und das war zwangsläufig der Gründer. Jetzt wird verbrannt, was ohne Staker fließt.
+/// Früher sammelte das Staking die Emission für den ersten Staker, und das war zwangsläufig der
+/// Gründer. Jetzt wird verbrannt, was ohne Staker fließt. Der Gründer steigt hier nach zwei Jahren
+/// mit dem ein, was bis dahin frei ist (200.000 BCUS), und bekommt trotzdem keinen Topf.
 contract FounderScenarioTest is Test {
     uint256 constant START = 1_800_000_000;
     address constant FOUNDER = address(0xF00D);
@@ -31,18 +32,19 @@ contract FounderScenarioTest is Test {
     }
 
     function testFounderGetsNoWindfallAfterLock() public {
-        // 730 Tage niemand: wöchentlich ruft jemand pull() auf (oder auch nicht, das ist egal).
+        // 730 Tage niemand stakt: wöchentlich ruft jemand pull() auf (oder auch nicht, das ist egal).
         for (uint256 i = 1; i <= 104; i++) {
             vm.warp(START + i * 1 weeks);
             st.pull();
         }
         vm.warp(START + 730 days);
         lock.release(address(token));
-        assertEq(token.balanceOf(FOUNDER), 1_000_000e18);
+        uint256 own = 200_000e18;                        // 2 von 10 Jahren frei
+        assertEq(token.balanceOf(FOUNDER), own);
 
         vm.startPrank(FOUNDER);
         token.approve(address(st), type(uint256).max);
-        st.stake(1_000_000e18);
+        st.stake(own);
         vm.stopPrank();
 
         // Fast alles aus den zwei Jahren ist verbrannt; offen ist höchstens der laufende Wochenstrom.
@@ -54,7 +56,7 @@ contract FounderScenarioTest is Test {
         vm.prank(FOUNDER);
         st.exit();
         // Er bekommt nur, was ab seinem Einstieg fließt: rund 3 Wochen, nicht 106.
-        assertLe(token.balanceOf(FOUNDER), 1_000_000e18 + 4 * base);
+        assertLe(token.balanceOf(FOUNDER), own + 4 * base);
         assertLe(st.totalStaked() + st.reserved(), token.balanceOf(address(st)));
     }
 }

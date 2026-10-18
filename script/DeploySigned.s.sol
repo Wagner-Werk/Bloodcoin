@@ -17,7 +17,7 @@ interface VmScript {
 /// Wie Deploy.s.sol, aber mit dem eigenen signierten Melder statt Chainlink CRE (Plan B).
 /// ORACLE_SIGNER ist die Adresse des Server-Schlüssels (oracle/signed/README.md).
 /// Die Startmenge (Gründer-BCUS) geht nicht an eine Adresse, sondern in den FounderLock:
-/// 2 Jahre ab Deploy gesperrt, danach kann sie nur FOUNDER_BENEFICIARY bekommen.
+/// über 10 Jahre ab Deploy linear frei (100.000 pro Jahr bei 1 Mio.), nur an FOUNDER_BENEFICIARY.
 /// Neue BCUS gehen je zur Hälfte an das Mining (jeder kann schürfen) und an das Staking.
 contract DeploySigned {
     VmScript internal constant vm = VmScript(address(uint160(uint256(keccak256("hevm cheat code")))));

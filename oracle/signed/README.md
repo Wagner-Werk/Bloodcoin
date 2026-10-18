@@ -54,7 +54,7 @@ data.cdc.gov prüfen, und zehn Wochen sind genug Zeit, dass es jemandem auffäll
 4. Deployen mit `DeploySigned.s.sol`:
    ```bash
    export ORACLE_SIGNER=0x...        # Melder-Adresse aus Schritt 2
-   export FOUNDER_BENEFICIARY=0x...  # bekommt die Startmenge nach 2 Jahren aus dem FounderLock
+   export FOUNDER_BENEFICIARY=0x...  # bekommt die Startmenge über 10 Jahre aus dem FounderLock
    export INITIAL_MINT_BCUS=1000000
    # Deployer-Schlüssel als Keystore oder Hardware-Wallet, nie als --private-key (landet sonst
    # in der Shell-History und ist in der Prozessliste sichtbar):
