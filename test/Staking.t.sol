@@ -20,7 +20,7 @@ contract StakingTest is Test {
     function setUp() public {
         vm.warp(START);
         st = new BcusStaking();
-        em = new MortalityEmission(address(0x0A), address(st), HOLDER, 1_000_000e18);
+        em = new MortalityEmission(address(0x0A), address(st), address(0), HOLDER, 1_000_000e18);
         st.bind(address(em));
         token = em.token();
         base = em.BASE_EMISSION();

@@ -17,7 +17,7 @@ contract SignedOracleTest is Test {
     function setUp() public {
         vm.warp(START);
         oracle = new SignedMortalityOracle(vm.addr(KEY));
-        em = new MortalityEmission(address(oracle), address(0xBEEF), address(0xCAFE), 1_000_000e18);
+        em = new MortalityEmission(address(oracle), address(0xBEEF), address(0), address(0xCAFE), 1_000_000e18);
         oracle.bind(address(em));
     }
 
@@ -59,7 +59,7 @@ contract SignedOracleTest is Test {
     function testSignatureBoundToContract() public {
         // Gleicher Schlüssel, zweiter Contract: die Signatur für den ersten gilt dort nicht.
         SignedMortalityOracle other = new SignedMortalityOracle(vm.addr(KEY));
-        MortalityEmission em2 = new MortalityEmission(address(other), address(0xBEEF), address(0xCAFE), 0);
+        MortalityEmission em2 = new MortalityEmission(address(other), address(0xBEEF), address(0), address(0xCAFE), 0);
         other.bind(address(em2));
         bytes memory s = sig(KEY, oracle.reportDigest(SAT, 252_000, 240_000));
         vm.expectRevert(SignedMortalityOracle.BadSignature.selector);

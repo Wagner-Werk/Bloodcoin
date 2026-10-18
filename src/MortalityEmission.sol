@@ -4,7 +4,9 @@ pragma solidity ^0.8.24;
 import {BloodcoinToken} from "./BloodcoinToken.sol";
 
 /// @title Sterbe-Index-Emission für BCUS
-/// @notice Gibt pro Woche (Epoche) neue BCUS an eine feste Adresse aus. Die Menge folgt einem
+/// @notice Gibt pro Woche (Epoche) neue BCUS aus: die Hälfte an das Mining (`miner`), die andere
+///         Hälfte an das Staking (`recipient`). Ohne Mining-Contract (`miner` = 0) geht alles an
+///         `recipient`. Die Menge folgt einem
 ///         Halbierungsplan wie bei Bitcoin und wird mit dem Sterbe-Faktor multipliziert.
 ///
 ///         Sterbe-Faktor: Verglichen werden die US-Todesfälle der letzten 4 CDC-Wochen mit dem
@@ -38,10 +40,12 @@ contract MortalityEmission {
     uint256 public constant FACTOR_MIN = 500;       // Promille
     uint256 public constant FACTOR_MAX = 1500;
     uint256 public constant MAX_DEATHS = 10_000_000;
+    uint256 public constant MINING_SHARE_BP = 5000; // 50 % jeder Ausgabe an das Mining
 
     BloodcoinToken public immutable token;
     address public immutable oracle;
     address public immutable recipient;
+    address public immutable miner;
     uint256 public immutable start;
 
     uint256 public settledEpochs;       // so viele Epochen sind abgerechnet
@@ -62,9 +66,10 @@ contract MortalityEmission {
     error NotASaturday();
     error BadDeaths();
 
-    constructor(address oracle_, address recipient_, address initialHolder, uint256 initialMint) {
+    constructor(address oracle_, address recipient_, address miner_, address initialHolder, uint256 initialMint) {
         oracle = oracle_;
         recipient = recipient_;
+        miner = miner_;
         start = block.timestamp;
         token = new BloodcoinToken(address(this), initialHolder, initialMint);
     }
@@ -134,15 +139,21 @@ contract MortalityEmission {
         return (block.timestamp - start) / EPOCH;
     }
 
-    /// @notice Gibt alles Fällige an `recipient` aus. Darf jeder aufrufen.
+    /// @notice Gibt alles Fällige aus, geteilt zwischen `miner` und `recipient`. Darf jeder aufrufen.
     function mint() external returns (uint256 amount) {
         _settle();
         amount = pending;
         uint256 room = token.cap() - token.totalSupply();
         if (amount > room) amount = room;
         pending = 0;
-        if (amount > 0) token.mint(recipient, amount);
-        emit Minted(recipient, amount, settledEpochs);
+        if (amount == 0) return 0;
+        uint256 toMiner = miner == address(0) ? 0 : amount * MINING_SHARE_BP / 10_000;
+        if (toMiner > 0) {
+            token.mint(miner, toMiner);
+            emit Minted(miner, toMiner, settledEpochs);
+        }
+        token.mint(recipient, amount - toMiner);
+        emit Minted(recipient, amount - toMiner, settledEpochs);
     }
 
     function _settle() internal {

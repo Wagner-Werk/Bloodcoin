@@ -29,7 +29,7 @@ contract BloodcoinTest is Test {
         vm.warp(START);
         fwd = new MockForwarder();
         oracle = new CreMortalityOracle(address(fwd));
-        em = new MortalityEmission(address(oracle), RECIPIENT, HOLDER, 1_000_000e18);
+        em = new MortalityEmission(address(oracle), RECIPIENT, address(0), HOLDER, 1_000_000e18);
         oracle.bind(address(em));
         token = em.token();
     }

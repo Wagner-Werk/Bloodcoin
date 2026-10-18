@@ -23,7 +23,7 @@ contract FounderLockTest is Test {
         SignedMortalityOracle o = new SignedMortalityOracle(vm.addr(0xB10D));
         BcusStaking st = new BcusStaking();
         lock = new FounderLock(FOUNDER);
-        MortalityEmission e = new MortalityEmission(address(o), address(st), address(lock), MINT);
+        MortalityEmission e = new MortalityEmission(address(o), address(st), address(0), address(lock), MINT);
         o.bind(address(e));
         st.bind(address(e));
         token = e.token();

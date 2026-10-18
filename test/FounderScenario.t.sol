@@ -24,7 +24,7 @@ contract FounderScenarioTest is Test {
         vm.warp(START);
         st = new BcusStaking();
         lock = new FounderLock(FOUNDER);
-        em = new MortalityEmission(address(0x0A), address(st), address(lock), 1_000_000e18);
+        em = new MortalityEmission(address(0x0A), address(st), address(0), address(lock), 1_000_000e18);
         st.bind(address(em));
         token = em.token();
         base = em.BASE_EMISSION();

@@ -8,14 +8,16 @@ Stand: 11.10.2026. Entwurf, **nicht auditiert, nicht deployt**. Vor echtem Geld:
 |---|---|
 | `src/BloodcoinToken.sol` | ERC-20 "Bloodcoin" (BCUS), 18 Nachkommastellen, harte Grenze 21 Mio. Kein Besitzer, keine Pause, keine Sperrliste. Nur der Emissions-Contract kann neue Coins erzeugen. |
 | `src/MortalityEmission.sol` | Gibt jede Woche neue BCUS aus: Halbierungsplan × Sterbe-Faktor (Übersterblichkeit, siehe `FAKTOR.md`). Deployt den Token selbst. Kein Besitzer, alles unveränderlich. |
-| `src/BcusStaking.sol` | Empfänger aller neuen BCUS. Wer BCUS hier sperrt, bekommt die Ausgabe anteilig, gleichmäßig über 7 Tage ausgezahlt. Ein- und Aussteigen jederzeit, kein Besitzer. |
+| `src/BcusStaking.sol` | Bekommt die Hälfte aller neuen BCUS. Wer BCUS hier sperrt, bekommt sie anteilig, gleichmäßig über 7 Tage ausgezahlt. Ein- und Aussteigen jederzeit, kein Besitzer. |
+| `src/BcusMining.sol` | Bekommt die andere Hälfte. Jeder kann BCUS schürfen (Proof of Work wie bei Bitcoin, keccak256): Lösung finden, `mine(nonce)` aufrufen. Die Belohnung richtet sich nach der Zeit seit der letzten Lösung (Anteil Zeit/Woche am Vorrat, höchstens 40 Minuten), nicht nach dem Tempo: Wer mit viel Rechenleistung Sekunden-Lösungen findet, bekommt fast nichts, und nach einer Pause gibt es keinen Topf. Schwierigkeit passt sich selbst an (Ziel: alle 10 Minuten eine Lösung). Kein Besitzer. |
+| `miner/mine.py` | Einfacher CPU-Miner (Python + `cast`). |
 | `src/CreMortalityOracle.sol` | Nimmt die CDC-Zahlen von Chainlink CRE entgegen (`onReport`). Nur der Chainlink-Forwarder darf melden, nach `pinWorkflow` nur noch genau ein Workflow. |
 | `oracle/cre-workflow/` | Der CRE-Workflow (TypeScript): jeden Montag fragen unabhängige Chainlink-Knoten data.cdc.gov ab, einigen sich und schreiben das Ergebnis ins Oracle. |
 | `script/Deploy.s.sol` | Deployt alles in einem Rutsch und verbindet die Teile. |
 | `src/FounderLock.sol` | Sperrvertrag für die Gründer-BCUS (OpenZeppelin-`VestingWallet` mit Dauer 0): 2 Jahre ab Deploy gesperrt, danach alles an den festen Empfänger. Kein Admin, Frist und Empfänger unveränderlich, frühe Abholung scheitert. |
-| `script/DeploySigned.s.sol` | Plan B: Oracle (signierter Melder), Staking, Sperrvertrag, Emission und Token in einem Durchlauf. Die Startmenge geht direkt in den Sperrvertrag. |
+| `script/DeploySigned.s.sol` | Plan B: Oracle (signierter Melder), Staking, Mining, Sperrvertrag, Emission und Token in einem Durchlauf. Die Startmenge geht direkt in den Sperrvertrag. (`Deploy.s.sol`, die Chainlink-Variante, deployt kein Mining.) |
 | `oracle/sim/` | Simulation der Faktor-Regel an echten US-Wochenzahlen 2015 bis 2024 (`python3 -I oracle/sim/simulate.py`). |
-| `test/` | 62 Contract-Tests (21 Token/Emission/Oracle, 11 Staking, 20 Plan-B-Melder, 9 Sperrvertrag, 1 Gründer-Szenario). Der Workflow hat eigene Tests in `oracle/cre-workflow/`. |
+| `test/` | 78 Contract-Tests (21 Token/Emission/Oracle, 11 Staking, 16 Mining, 20 Plan-B-Melder, 9 Sperrvertrag, 1 Gründer-Szenario). Der Workflow hat eigene Tests in `oracle/cre-workflow/`. |
 
 ## Regeln, die im Code stehen
 
