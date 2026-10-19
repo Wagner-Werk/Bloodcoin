@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bloodcoin Staking</title>
+<meta name="description" content="Bloodcoin staking on the Base test network. Bloodcoin is still in development. BCUS is not yet available for purchase.">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="stylesheet" href="/assets/rollen/fonts.css">
+<style>
+/* Same parchment scroll world as the exchange: dark night, one sheet, bottom roll, ink reveal. No yield figures anywhere. */
+:root{
+  --night:#090b11; --night-2:#141a29;
+  --paper:#f1e8d2; --paper-2:#e3d4b0; --ink:#1f1712; --ink-soft:#6b5a49; --rule:rgba(31,23,18,.14);
+  --blood:#9e0f18; --blood-hi:#d0202b; --green:#15633d; --gold:#c9a25a;
+  --f-display:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+  --f-ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{background:var(--night)}
+body{margin:0;
+  background:radial-gradient(ellipse 70% 45% at 50% 0%, rgba(158,15,24,.16), transparent 70%), radial-gradient(ellipse at 50% 0%, var(--night-2), var(--night) 70%);
+  background-color:var(--night); background-attachment:fixed;
+  color:var(--paper); font:15px/1.55 var(--f-ui); font-feature-settings:"tnum","cv11"; min-height:100vh; -webkit-font-smoothing:antialiased}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px))}
+.banner{text-align:center; font:500 12px/1.4 var(--f-ui); color:#ecd4a6; background:rgba(158,15,24,.25); border-bottom:1px solid rgba(201,162,90,.22); padding-block:8px}
+.banner b{color:var(--gold); font-weight:700; letter-spacing:.1em; margin-right:.5em; font-size:11px}
+.top{position:sticky; top:0; z-index:10; background:rgba(14,10,14,.86); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); border-bottom:1px solid rgba(201,162,90,.18)}
+.top-in{max-width:1180px; margin:0 auto; display:flex; align-items:center; gap:18px; padding-block:14px}
+.brand{display:flex; align-items:center; gap:10px; font:700 24px/1 var(--f-display); color:#ecd09a; white-space:nowrap; text-decoration:none}
+.brand svg{width:16px; height:22px; filter:drop-shadow(0 0 6px rgba(208,32,43,.6))}
+.brand small{font:600 10px var(--f-ui); letter-spacing:.16em; color:var(--gold); border:1px solid rgba(201,162,90,.4); padding:3px 7px; border-radius:20px}
+.ext{font:500 13px var(--f-ui); color:#bfb29a; text-decoration:none; white-space:nowrap}
+.ext:hover{color:#fff}
+.ext.first{margin-left:auto}
+.ghost{all:unset; cursor:pointer; font:600 13px var(--f-ui); color:#f1e6cf; border:1px solid rgba(201,162,90,.4); padding:6px 12px; border-radius:20px; white-space:nowrap}
+.ghost:hover{background:rgba(201,162,90,.12)}
+.ghost:focus-visible,.btn:focus-visible,.gbtn:focus-visible,.seg button:focus-visible{outline:2px solid #e2803a; outline-offset:2px}
+
+main{max-width:1180px; margin:0 auto; padding-block:30px 56px}
+.roll{position:relative; z-index:2; height:24px; margin:-4px -3px 0; border-radius:6px;
+  background:linear-gradient(180deg,#3e2e1a 0%,#8a7150 9%,#d9c9a4 26%,#fbf5e6 40%,#fffaf0 46%,#ecdfbf 58%,#c2a97c 76%,#7a623e 91%,#33251390 100%);
+  box-shadow:0 14px 18px -10px rgba(0,0,0,.75), inset 0 1px 0 rgba(255,250,235,.5)}
+.paper{position:relative; padding:38px clamp(18px,4vw,52px) 30px; color:var(--ink); border-radius:3px; overflow:hidden;
+  background:
+    linear-gradient(90deg, rgba(120,84,40,.13), transparent 3%, transparent 97%, rgba(120,84,40,.13)),
+    linear-gradient(180deg, rgba(120,84,40,.12), transparent 4%, transparent 96%, rgba(120,84,40,.14)),
+    radial-gradient(ellipse at 50% 40%, var(--paper) 60%, var(--paper-2) 100%);
+  animation:unroll 1.1s cubic-bezier(.55,.05,.25,1) both}
+.paper::after{content:""; position:absolute; left:0; right:0; bottom:0; height:56px; pointer-events:none;
+  background:linear-gradient(180deg, transparent, rgba(90,62,30,.18) 55%, rgba(50,32,14,.42))}
+@keyframes unroll{from{clip-path:inset(0 0 100% 0)} to{clip-path:inset(0 0 0 0)}}
+
+.head{display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 16px; border-bottom:1px solid rgba(31,23,18,.5); padding-bottom:12px; margin-bottom:22px}
+.head h1{margin:0; font:700 clamp(30px,4vw,44px)/1 var(--f-display); letter-spacing:-.005em}
+.eb{font:700 10.5px var(--f-ui); letter-spacing:.18em; text-transform:uppercase; color:var(--blood)}
+.note{margin-left:auto; font:500 12px var(--f-ui); color:var(--ink-soft); background:rgba(31,23,18,.06); padding:4px 10px; border-radius:20px}
+.note.ok{color:var(--green); background:rgba(21,99,61,.1)}
+h2{margin:0 0 4px; font:700 11px/1.2 var(--f-ui); letter-spacing:.14em; text-transform:uppercase; color:var(--ink-soft)}
+h3{margin:0; font:700 15px var(--f-ui)}
+p{margin:0}
+a{color:var(--blood); font-weight:600; text-underline-offset:3px}
+.lead{font-size:17px; line-height:1.6; max-width:64ch}
+.small{font-size:13.5px; color:var(--ink-soft)}
+
+.stats{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:28px; margin-top:26px}
+.stat{min-width:0}
+.stat + .stat{border-left:1px solid var(--rule); padding-left:28px}
+.stat .big{font:800 clamp(24px,2.6vw,34px)/1.05 var(--f-ui); letter-spacing:-.03em; margin:6px 0 4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.stat .big small{font-size:.48em; font-weight:700; letter-spacing:0; color:var(--ink-soft); margin-left:3px}
+.stat .sub{font:500 12.5px var(--f-ui); color:var(--ink-soft)}
+
+.sect{margin-top:30px; padding-top:22px; border-top:1px solid var(--rule)}
+.cols{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:28px}
+.col{display:flex; flex-direction:column; gap:12px; min-width:0}
+.col + .col{border-left:1px solid var(--rule); padding-left:28px}
+dl{display:grid; grid-template-columns:max-content 1fr; gap:10px 26px; margin:0; align-items:baseline}
+dt{font:500 14px var(--f-ui); color:var(--ink-soft)}
+dd{margin:0; font:700 18px var(--f-ui); letter-spacing:-.01em; text-align:right; overflow-wrap:anywhere}
+dd.hl{color:var(--green)}
+.seg{display:flex; background:rgba(31,23,18,.07); border-radius:10px; padding:4px; gap:4px}
+.seg button{all:unset; flex:1; text-align:center; cursor:pointer; padding:10px; font:600 14px var(--f-ui); color:var(--ink-soft); border-radius:7px}
+.seg button[aria-pressed="true"]{background:#fffaf0; color:var(--blood); box-shadow:0 1px 3px rgba(0,0,0,.15)}
+label{display:flex; justify-content:space-between; font:600 10.5px var(--f-ui); letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-top:6px}
+label a{letter-spacing:.06em}
+input{font:600 17px var(--f-ui); color:var(--ink); background:rgba(255,253,246,.7); border:1px solid rgba(31,23,18,.18); padding:11px 12px; border-radius:8px; width:100%; color-scheme:light; font-variant-numeric:tabular-nums}
+input::placeholder{color:rgba(107,90,73,.6); font-weight:500}
+input:focus{outline:none; border-color:var(--blood); box-shadow:0 0 0 3px rgba(158,15,24,.15)}
+.btn{all:unset; box-sizing:border-box; cursor:pointer; text-align:center; padding:14px 18px; background:linear-gradient(180deg,var(--blood-hi),var(--blood)); color:#fff6e8;
+  font:700 14px/1 var(--f-ui); letter-spacing:.04em; border-radius:10px; box-shadow:0 6px 16px -6px rgba(158,15,24,.7)}
+.btn:hover{filter:brightness(1.08)}
+.btn[disabled],.gbtn[disabled]{opacity:.45; cursor:default; filter:none}
+.gbtn{all:unset; box-sizing:border-box; cursor:pointer; flex:1; font:600 13px var(--f-ui); color:var(--ink); border:1px solid rgba(31,23,18,.3); padding:10px 14px; border-radius:8px; background:rgba(255,253,246,.6); text-align:center}
+.gbtn:hover{border-color:var(--blood); color:var(--blood)}
+.row{display:flex; gap:10px; flex-wrap:wrap}
+.msg{min-height:1.4em; font:500 13px var(--f-ui); color:var(--ink-soft); overflow-wrap:anywhere}
+.msg.err{color:var(--blood)} .msg.ok{color:var(--green)}
+
+.steps{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px; margin-top:14px}
+.steps > div{display:flex; flex-direction:column; gap:6px}
+.steps b.n{font:700 30px/1 var(--f-display); color:var(--blood)}
+.steps p{font-size:14px; color:var(--ink-soft)}
+.disc{margin-top:14px; padding:14px 18px; border-left:3px solid var(--blood); background:rgba(158,15,24,.05); font-size:14px}
+.disc ul{margin:0; padding-left:18px} .disc li{margin:5px 0}
+.addr{font:12px var(--f-mono); word-break:break-all}
+.foot{margin-top:26px; padding-top:12px; border-top:1px solid var(--rule); display:flex; flex-wrap:wrap; justify-content:space-between; gap:8px; font:500 11.5px var(--f-ui); color:var(--ink-soft)}
+[hidden]{display:none!important}
+
+[data-ink]{animation:ink 1s cubic-bezier(.2,.7,.2,1) var(--d,.5s) both}
+@keyframes ink{
+  0%{opacity:0; filter:blur(7px) sepia(1) saturate(4) hue-rotate(-30deg); transform:translateY(3px)}
+  45%{opacity:.75; filter:blur(1.5px) sepia(1) saturate(5) hue-rotate(-40deg)}
+  100%{opacity:1; filter:none; transform:none}
+}
+@media (max-width:900px){
+  .stats,.cols{grid-template-columns:minmax(0,1fr)}
+  .stat + .stat,.col + .col{border-left:0; padding-left:0; border-top:1px solid var(--rule); padding-top:20px}
+  .steps{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width:560px){
+  .steps{grid-template-columns:minmax(0,1fr)} .top-in .ext{display:none} .paper{padding-top:30px}
+  dl{grid-template-columns:1fr; gap:0} dd{text-align:left; margin-bottom:10px}
+}
+@media (prefers-reduced-motion: reduce){ .paper,[data-ink]{animation:none!important} }
+</style>
+</head>
+<body>
+<div class="banner gut" role="note"><b>IN DEVELOPMENT</b>Bloodcoin is still in development. BCUS is not yet available for purchase. <span data-testnet>Staking runs on a test network; test BCUS have no value.</span></div>
+
+<header class="top">
+  <div class="top-in gut">
+    <a class="brand" href="https://exchange.bloodcoin-us.com/"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M5 0C5 0 0 6.5 0 9a5 5 0 0 0 10 0C10 6.5 5 0 5 0z" fill="#d0202b"/></svg>Bloodcoin <small>STAKING</small></a>
+    <a class="ext first" href="https://exchange.bloodcoin-us.com/">Exchange</a>
+    <a class="ext" href="https://bloodcoin-us.com/oracle">Oracle</a>
+    <a class="ext" href="https://bloodcoin-us.com/whitepaper">Whitepaper</a>
+    <a class="ext" href="https://node.bloodcoin-us.com">Explorer ↗</a>
+    <button class="ghost" type="button" id="connect">Connect wallet</button>
+  </div>
+</header>
+
+<main class="gut">
+  <div class="paper" id="paper">
+    <div class="head"><span class="eb">Scroll · Staking</span><h1>Stake BCUS</h1><span class="note" id="net">Not connected</span></div>
+
+    <p class="lead" data-ink style="--d:.5s">Each week new BCUS are created. How many depends on the mortality factor reported by the <a href="https://bloodcoin-us.com/oracle">oracle</a>. Half of them go to public mining, the other half to everyone who has BCUS staked here, in proportion to their stake and paid out evenly over the following seven days.</p>
+
+    <div id="notlive" class="disc" hidden>The staking contract is not deployed on this network yet. This page will work as soon as it is.</div>
+
+    <div class="stats" id="live" data-ink style="--d:.75s">
+      <div class="stat"><h2>Total staked</h2><div class="big" id="k-total">–</div><div class="sub">BCUS in the pool</div></div>
+      <div class="stat"><h2>To stakers this week</h2><div class="big" id="k-week">–</div><div class="sub" id="k-week-sub">BCUS, shared by all stakers</div></div>
+      <div class="stat"><h2>Mortality factor</h2><div class="big" id="k-factor">–</div><div class="sub" id="k-factor-sub">no CDC report yet</div></div>
+    </div>
+
+    <div class="sect cols" data-ink style="--d:.95s">
+      <section class="col" aria-label="Your position">
+        <h2>Your position</h2>
+        <p class="small" id="nowallet">Connect a wallet to see your position and to stake.</p>
+        <dl id="pos" hidden>
+          <dt>Wallet</dt><dd class="addr" id="p-addr">–</dd>
+          <dt>In wallet</dt><dd id="p-bal">–</dd>
+          <dt>Staked</dt><dd id="p-staked">–</dd>
+          <dt>Ready to claim</dt><dd class="hl" id="p-earned">–</dd>
+          <dt>Your share of the pool</dt><dd id="p-share">–</dd>
+        </dl>
+        <div class="row">
+          <button class="gbtn" type="button" id="claim" disabled>Claim</button>
+          <button class="gbtn" type="button" id="exit" disabled>Unstake all and claim</button>
+        </div>
+      </section>
+      <section class="col" aria-label="Stake or unstake">
+        <div class="seg" role="group" aria-label="Action"><button type="button" data-m="stake" aria-pressed="true">Stake</button><button type="button" data-m="unstake" aria-pressed="false">Unstake</button></div>
+        <label for="amount"><span>Amount (BCUS)</span><a href="#" id="max">Max</a></label>
+        <input id="amount" inputmode="decimal" placeholder="0.0" autocomplete="off">
+        <button class="btn" type="button" id="go" disabled>Stake</button>
+        <p class="small" id="hint">The first time, your wallet asks twice: once to allow the contract to move your BCUS, then to stake.</p>
+        <div class="msg" id="msg" role="status"></div>
+      </section>
+    </div>
+
+    <div class="sect" data-ink style="--d:1.1s">
+      <h2>How it works</h2>
+      <div class="steps">
+        <div><b class="n">I</b><h3>Stake</h3><p>You move BCUS into the staking contract. They stay yours and you can take them back at any time.</p></div>
+        <div><b class="n">II</b><h3>Weekly emission</h3><p>Once a week the emission contract creates new BCUS. Half of them flow into this pool.</p></div>
+        <div><b class="n">III</b><h3>Over seven days</h3><p>The new BCUS are paid out evenly over the next seven days, split by each staker's share of the pool.</p></div>
+        <div><b class="n">IV</b><h3>Nobody staked</h3><p>Whatever flows while nobody has anything staked is burned. Nobody collects it later.</p></div>
+      </div>
+    </div>
+
+    <div class="sect" data-ink style="--d:1.25s">
+      <h2>Before you stake</h2>
+      <div class="disc"><ul>
+        <li>This is not an offer and not an investment. There is no promised or expected return. How much you receive depends on how much is emitted and how much everyone else has staked, and both change every week.</li>
+        <li>BCUS can lose all of their value. Rewards are paid in BCUS.</li>
+        <li>The contracts have no owner. Nobody can change or pause them, including us, so nobody can rescue funds after a mistake either.</li>
+        <li>The contracts have not been audited by an independent firm yet.</li>
+        <li>There is no lock-up and no fee. You can unstake at any time.</li>
+        <li>Not available to persons in the United States.</li>
+      </ul></div>
+      <p class="small" id="addrs" style="margin-top:14px"></p>
+    </div>
+
+    <div class="foot"><span>Bloodcoin · <a href="https://bloodcoin-us.com/legal.html">Legal notice</a></span><span id="mode"></span></div>
+  </div>
+  <div class="roll" aria-hidden="true"></div>
+  <noscript><p style="color:#f1e8d2">Staking needs JavaScript and a browser wallet.</p></noscript>
+</main>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const E18 = 10n ** 18n;
+const SEL = {
+  balanceOf: "70a08231", allowance: "dd62ed3e", approve: "095ea7b3", stakedOf: "af500ba3", earned: "008cc262",
+  totalStaked: "817b1cd2", stake: "a694fc3a", withdraw: "2e1a7d4d", claim: "4e71d92d", exit: "e9fad8ee",
+  factorMilli: "de78330b", lastWeekEnding: "e1ce7fde", completedEpochs: "e0df268c", epochEmission: "0b5dcc36", miner: "349dc329",
+};
+const PROD = /(^|\.)bloodcoin-us\.com$/.test(location.hostname);
+let cfg = null, account = null, chainOk = false, mode = "stake", busy = false, hasMiner = true;
+let state = { bal: 0n, staked: 0n, earned: 0n, allowance: 0n, total: 0n };
+
+const word = (v) => BigInt(v).toString(16).padStart(64, "0");
+const addrWord = (a) => a.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+const data = (name, ...args) => "0x" + SEL[name] + args.join("");
+function fmt(v, digits = 2) {
+  const neg = v < 0n; if (neg) v = -v;
+  const scale = 10n ** BigInt(18 - digits);
+  let w = v / E18, f = (v % E18 + scale / 2n) / scale;
+  if (f >= 10n ** BigInt(digits)) { w += 1n; f = 0n; }
+  return (neg ? "-" : "") + w.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "'") + (digits ? "." + f.toString().padStart(digits, "0") : "");
+}
+function parseAmount(s) {
+  s = String(s).trim().replace(/['’,]/g, "");
+  if (!/^\d+(\.\d{0,18})?$/.test(s) && !/^\.\d{1,18}$/.test(s)) return null;
+  const [w, f = ""] = s.split(".");
+  return BigInt(w || "0") * E18 + BigInt((f + "0".repeat(18)).slice(0, 18));
+}
+function show(kind, text) { const m = $("msg"); m.className = "msg " + kind; m.textContent = text; }
+const short = (a) => a.slice(0, 6) + "…" + a.slice(-4);
+const pct = (a, b) => b > 0n ? (Number(a * 10000n / b) / 100).toFixed(2) + " %" : "–";
+
+async function rpc(method, params = []) { return window.ethereum.request({ method, params }); }
+async function call(to, d) { return BigInt(await rpc("eth_call", [{ to, data: d }, "latest"])); }
+async function send(to, d, label) {
+  show("", label + ": confirm in your wallet …");
+  const hash = await rpc("eth_sendTransaction", [{ from: account, to, data: d }]);
+  show("", label + ": waiting for confirmation …");
+  for (let i = 0; i < 120; i++) {
+    const r = await rpc("eth_getTransactionReceipt", [hash]);
+    if (r) { if (r.status !== "0x1") throw new Error(label + " failed on chain"); return r; }
+    await new Promise((res) => setTimeout(res, 1500));
+  }
+  throw new Error(label + ": no confirmation yet, check your wallet");
+}
+const errText = (e) => (e && e.code === 4001) ? "Cancelled in wallet." : ((e && (e.data && e.data.message || e.message)) || String(e));
+function setNet(ok, text) { $("net").textContent = text; $("net").className = "note" + (ok ? " ok" : ""); }
+
+// Preview outside the real domain: sample numbers, no wallet actions.
+const SAMPLE = { cfg: { testnet: true, chainName: "Base Sepolia", chainId: 84532, staking: "0x0", token: "0x0", emission: "0x0" },
+  stats: { total: 182400n * E18, factor: 1000n, lastWeek: 1758931200n, base: 25240n * E18 } };
+
+async function loadConfig() {
+  if (!PROD) { cfg = SAMPLE.cfg; $("mode").textContent = "Preview with sample numbers"; $("connect").disabled = true; return true; }
+  cfg = await (await fetch("/api/staking-config")).json();
+  if (!cfg.testnet) document.querySelector("[data-testnet]").hidden = true;
+  if (!cfg.staking) { $("notlive").hidden = false; $("live").hidden = true; $("connect").disabled = true; return false; }
+  const link = (a) => cfg.explorer ? `<a class="addr" href="${cfg.explorer}/address/${a}" target="_blank" rel="noopener">${a}</a>` : `<span class="addr">${a}</span>`;
+  $("addrs").innerHTML = "Contracts on " + cfg.chainName + ": token " + link(cfg.token) + ", staking " + link(cfg.staking) + ", emission " + link(cfg.emission) + ".";
+  return true;
+}
+
+async function ensureChain() {
+  chainOk = parseInt(await rpc("eth_chainId"), 16) === cfg.chainId;
+  if (!chainOk) {
+    setNet(false, "Wrong network");
+    const hex = "0x" + cfg.chainId.toString(16);
+    try { await rpc("wallet_switchEthereumChain", [{ chainId: hex }]); }
+    catch (e) {
+      if (e.code !== 4902 || !cfg.rpcUrl) throw e;
+      await rpc("wallet_addEthereumChain", [{ chainId: hex, chainName: cfg.chainName, rpcUrls: [cfg.rpcUrl],
+        nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 }, blockExplorerUrls: cfg.explorer ? [cfg.explorer] : [] }]);
+    }
+    chainOk = parseInt(await rpc("eth_chainId"), 16) === cfg.chainId;
+  }
+  if (chainOk) setNet(true, cfg.chainName);
+  return chainOk;
+}
+
+async function connect() {
+  if (!window.ethereum) { show("err", "No wallet found. Install MetaMask or Coinbase Wallet in this browser."); return; }
+  try {
+    account = (await rpc("eth_requestAccounts"))[0];
+    if (!(await ensureChain())) { show("err", "Please switch your wallet to " + cfg.chainName + "."); return; }
+    $("connect").textContent = short(account);
+    show("", "");
+    await refresh();
+  } catch (e) { show("err", errText(e)); }
+}
+
+async function poolStats() {
+  if (!PROD) return SAMPLE.stats;
+  if (window.ethereum && chainOk) {
+    const [total, factor, lastWeek, epochs, miner] = await Promise.all([
+      call(cfg.staking, data("totalStaked")), call(cfg.emission, data("factorMilli")),
+      call(cfg.emission, data("lastWeekEnding")), call(cfg.emission, data("completedEpochs")),
+      call(cfg.emission, data("miner")).catch(() => 1n),
+    ]);
+    hasMiner = miner !== 0n;
+    return { total, factor, lastWeek, base: await call(cfg.emission, data("epochEmission", word(epochs))) };
+  }
+  const r = await (await fetch("/api/staking-stats")).json();
+  if (r.error) throw new Error(r.error);
+  const o = {};
+  for (const k of ["total", "factor", "lastWeek", "base"]) o[k] = BigInt(r[k]);
+  return o;
+}
+
+async function refresh() {
+  if (!cfg || !cfg.staking) return;
+  const { total, factor, lastWeek, base } = await poolStats();
+  state.total = total;
+  const week = base * factor / 1000n;
+  $("k-total").innerHTML = fmt(total, 0) + "<small>BCUS</small>";
+  $("k-week").innerHTML = fmt(hasMiner ? week / 2n : week, 0) + "<small>BCUS</small>";
+  $("k-week-sub").textContent = hasMiner ? "half of " + fmt(week, 0) + " new BCUS, shared by all stakers" : "all new BCUS, shared by all stakers";
+  $("k-factor").textContent = (Number(factor) / 1000).toFixed(2) + "×";
+  if (lastWeek > 0n) $("k-factor-sub").textContent = "CDC data up to week ending " + new Date(Number(lastWeek) * 1000).toISOString().slice(0, 10);
+
+  if (!account || !chainOk) return;
+  const a = addrWord(account);
+  const [bal, staked, earned, allowance] = await Promise.all([
+    call(cfg.token, data("balanceOf", a)), call(cfg.staking, data("stakedOf", a)),
+    call(cfg.staking, data("earned", a)), call(cfg.token, data("allowance", a, addrWord(cfg.staking))),
+  ]);
+  state = { ...state, bal, staked, earned, allowance };
+  $("nowallet").hidden = true; $("pos").hidden = false;
+  $("p-addr").textContent = short(account);
+  $("p-bal").textContent = fmt(bal) + " BCUS";
+  $("p-staked").textContent = fmt(staked) + " BCUS";
+  $("p-earned").textContent = fmt(earned, 4) + " BCUS";
+  $("p-share").textContent = pct(staked, total);
+  $("claim").disabled = busy || earned === 0n;
+  $("exit").disabled = busy || (staked === 0n && earned === 0n);
+  $("go").disabled = busy;
+}
+
+async function run(fn) {
+  if (busy) return;
+  busy = true; ["go", "claim", "exit"].forEach((id) => ($(id).disabled = true));
+  try { await fn(); } catch (e) { show("err", errText(e)); }
+  busy = false;
+  await refresh().catch(() => {});
+}
+
+$("go").onclick = () => run(async () => {
+  const amt = parseAmount($("amount").value);
+  if (!amt) throw new Error("Enter an amount.");
+  if (mode === "stake") {
+    if (amt > state.bal) throw new Error("You only have " + fmt(state.bal) + " BCUS in your wallet.");
+    const needsApprove = state.allowance < amt;
+    if (needsApprove) await send(cfg.token, data("approve", addrWord(cfg.staking), word(amt)), "Step 1 of 2: allow");
+    await send(cfg.staking, data("stake", word(amt)), needsApprove ? "Step 2 of 2: stake" : "Stake");
+    show("ok", "Staked " + fmt(amt) + " BCUS.");
+  } else {
+    if (amt > state.staked) throw new Error("You only have " + fmt(state.staked) + " BCUS staked.");
+    await send(cfg.staking, data("withdraw", word(amt)), "Unstake");
+    show("ok", "Unstaked " + fmt(amt) + " BCUS. They are back in your wallet.");
+  }
+  $("amount").value = "";
+});
+$("claim").onclick = () => run(async () => { await send(cfg.staking, data("claim"), "Claim"); show("ok", "Claimed BCUS sent to your wallet."); });
+$("exit").onclick = () => run(async () => { await send(cfg.staking, data("exit"), "Unstake all"); show("ok", "Everything is back in your wallet."); });
+$("max").onclick = (e) => {
+  e.preventDefault();
+  const v = mode === "stake" ? state.bal : state.staked;
+  $("amount").value = (v / E18).toString() + (v % E18 ? "." + (v % E18).toString().padStart(18, "0").replace(/0+$/, "") : "");
+};
+document.querySelectorAll(".seg button").forEach((b) => (b.onclick = () => {
+  mode = b.dataset.m;
+  document.querySelectorAll(".seg button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  $("go").textContent = mode === "stake" ? "Stake" : "Unstake";
+  $("hint").hidden = mode !== "stake";
+  show("", "");
+}));
+$("connect").onclick = connect;
+
+(async () => {
+  try {
+    if (!(await loadConfig())) return;
+    if (PROD && window.ethereum) {
+      window.ethereum.on && window.ethereum.on("accountsChanged", () => location.reload());
+      window.ethereum.on && window.ethereum.on("chainChanged", () => location.reload());
+      if ((await rpc("eth_accounts")).length) await connect();
+      else { chainOk = parseInt(await rpc("eth_chainId"), 16) === cfg.chainId; if (chainOk) setNet(true, cfg.chainName); }
+    }
+    await refresh();
+  } catch (e) { show("err", errText(e)); }
+  if (PROD) setInterval(() => refresh().catch(() => {}), 15000);
+})();
+</script>
+</body>
+</html>
