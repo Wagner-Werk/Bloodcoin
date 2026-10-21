@@ -110,9 +110,8 @@ input:focus{outline:none; border-color:var(--blood); box-shadow:0 0 0 3px rgba(1
 
 [data-ink]{animation:ink 1s cubic-bezier(.2,.7,.2,1) var(--d,.5s) both}
 @keyframes ink{
-  0%{opacity:0; filter:blur(7px) sepia(1) saturate(4) hue-rotate(-30deg); transform:translateY(3px)}
-  45%{opacity:.75; filter:blur(1.5px) sepia(1) saturate(5) hue-rotate(-40deg)}
-  100%{opacity:1; filter:none; transform:none}
+  0%{opacity:0; transform:translateY(4px)}
+  100%{opacity:1; transform:none}
 }
 @media (max-width:900px){
   .stats,.cols{grid-template-columns:minmax(0,1fr)}
