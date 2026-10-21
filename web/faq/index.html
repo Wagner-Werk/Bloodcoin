@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bloodcoin FAQ</title>
+<meta name="description" content="Frequently asked questions about Bloodcoin and the BCUS token: what it is, how the mortality factor works, and what is not offered.">
+<link rel="icon" href="/favicon.png">
+
+<style>
+/* Same white academic column as the whitepaper: questions as headings, plain answers, no scripts. White in every scheme, by request. */
+:root{
+  color-scheme:light;
+  --paper:#ffffff; --ink:#16130f; --soft:#5b5650; --rule:#dcd8d2; --tint:#f6f4f1; --blood:#7d1d1d;
+  --serif:Charter,"Bitstream Charter","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+html{background:var(--paper)}
+body{background:var(--paper);color:var(--ink);margin:0;font:17px/1.62 var(--serif);-webkit-text-size-adjust:100%}
+.doc{max-width:700px;margin:0 auto;padding-block:56px 88px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.title{border-bottom:2px solid var(--ink);padding-bottom:22px;margin-bottom:26px}
+.kicker{font:600 12px/1.4 var(--sans);letter-spacing:.14em;text-transform:uppercase;color:var(--blood);margin:0 0 14px}
+h1{font-size:40px;line-height:1.1;font-weight:normal;margin:0 0 10px;text-wrap:balance}
+.subtitle{font-size:20px;line-height:1.35;font-style:italic;margin:0 0 18px;text-wrap:balance}
+.byline{font:14px/1.6 var(--sans);color:var(--soft);margin:0;display:flex;flex-wrap:wrap;gap:4px 18px}
+.notice{font:14px/1.55 var(--sans);border:1px solid var(--ink);padding:14px 16px;margin:0 0 30px}
+.notice b{font-weight:600}
+nav.toc{font:14.5px/1.5 var(--sans);margin:0 0 10px}
+nav.toc h2{font:600 12px/1.4 var(--sans);letter-spacing:.14em;text-transform:uppercase;margin:0 0 8px;color:var(--soft)}
+nav.toc ol{columns:2;column-gap:32px;padding-left:24px;margin:0}
+nav.toc li{break-inside:avoid;margin:0 0 3px}
+h2{font-size:23px;font-weight:normal;margin:52px 0 6px;line-height:1.25;text-wrap:balance}
+h2 .n{color:var(--blood);font-variant-numeric:tabular-nums;margin-right:.45em}
+h3{font-size:18px;font-weight:bold;margin:28px 0 6px;line-height:1.35;text-wrap:balance}
+p,ul{margin:0 0 14px}
+ul{padding-left:22px}
+li{margin:0 0 6px}
+a{color:var(--ink);text-decoration:underline;text-decoration-color:var(--blood);text-underline-offset:2px}
+a:focus-visible{outline:2px solid var(--blood);outline-offset:2px}
+.firm{background:var(--tint);border-left:3px solid var(--blood);padding:12px 16px;margin:0 0 14px}
+.firm p:last-child{margin:0}
+.small{font:14px/1.55 var(--sans);color:var(--soft)}
+footer{border-top:1px solid var(--rule);margin-top:48px;padding-top:16px;font:13.5px/1.6 var(--sans);color:var(--soft)}
+@media (max-width:560px){body{font-size:16px}h1{font-size:31px}.subtitle{font-size:18px}nav.toc ol{columns:1}.doc{padding-block:36px 64px}}
+@media print{.doc{padding:0;max-width:none}a{text-decoration:none}h2,h3{break-after:avoid}}
+</style>
+</head>
+<body>
+<article class="doc">
+
+<header class="title">
+  <p class="kicker">Frequently asked questions</p>
+  <h1>Bloodcoin FAQ</h1>
+  <p class="subtitle">Short answers about the project, the mortality factor and what is not offered</p>
+  <p class="byline"><span>Michel Wagner</span><span>Lyss, Switzerland</span><span>21 October 2026</span><span>Status: test network only</span></p>
+</header>
+
+<div class="notice"><b>Important notice.</b> Bloodcoin is still in development. BCUS is not yet available for purchase. These answers are not an offer, a prospectus or investment advice, and they make no promise of value, price or return. Bloodcoin is not offered to persons in the United States. Where this page and the <a href="https://bloodcoin-us.com/whitepaper">whitepaper</a> differ, the whitepaper applies.</div>
+
+<nav class="toc" aria-label="Contents">
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#s1">The project</a></li>
+    <li><a href="#s2">Buying, price and value</a></li>
+    <li><a href="#s3">The mortality factor</a></li>
+    <li><a href="#s4">Supply, mining and staking</a></li>
+    <li><a href="#s5">The founder allocation</a></li>
+    <li><a href="#s6">Chain, token and demo exchange</a></li>
+    <li><a href="#s7">Safety and scams</a></li>
+    <li><a href="#s8">Legal and data protection</a></li>
+  </ol>
+</nav>
+
+<h2 id="s1"><span class="n">1</span>The project</h2>
+
+<h3 id="what">What is Bloodcoin?</h3>
+<p>Bloodcoin is an open-source project that writes the weekly number of deaths in the United States, as published by the Centers for Disease Control and Prevention (CDC), to a public ledger. The same figure adjusts, within fixed limits, how many new BCUS tokens are created each week. BCUS is the project's token on Base, an Ethereum layer-2 network. Today it runs only on the Base Sepolia test network, where it has no value.</p>
+
+<h3 id="why">Why mortality data?</h3>
+<p>Most cryptocurrencies issue new coins on a schedule that ignores the world outside the network. Bloodcoin ties issuance to a measurement that has nothing to do with markets and is among the most carefully collected public statistics there is. Over the years the ledger becomes a permanent chronicle of these weekly figures. The project is first an artwork and a public record.</p>
+
+<h3 id="ethics">Isn't it disrespectful to build a token on deaths?</h3>
+<p>It is a fair question. Higher mortality lowers issuance, so the ledger issues less in a year of loss. The design cannot cause or prevent a single death: it reads national totals after the fact, eight weeks late, and moves issuance by a few percent at most. The project uses only published national totals and processes no data about any individual. Section 10 of the whitepaper discusses this in more detail.</p>
+
+<h3 id="who">Who is behind Bloodcoin?</h3>
+<p>Michel Wagner, a private person in Lyss, Switzerland. The project is run by one person. There is no company, no team and no investors. Contact: <a href="mailto:contact@bloodcoin-us.com">contact@bloodcoin-us.com</a>. The full postal address is in the <a href="https://bloodcoin-us.com/legal.html">legal notice</a>.</p>
+
+<h2 id="s2"><span class="n">2</span>Buying, price and value</h2>
+
+<h3 id="buy">Can I buy BCUS?</h3>
+<p>No. BCUS is not available for purchase, and nobody is authorised to sell it on behalf of the project. There is no pre-sale, no private sale, no ICO, no airdrop and no fundraising. The publisher sells nothing and opens no trading pool until a legal review by a Swiss law firm is complete and its result is followed.</p>
+
+<h3 id="worth">Is BCUS worth anything? Will the price go up? Should I invest?</h3>
+<div class="firm">
+<p>We do not answer questions about price, value, return or whether to acquire BCUS, and nothing on our websites should be read that way. BCUS on the test network has no value. A token may never have a value, or may lose all of it.</p>
+</div>
+<p>A lower supply does not mean a higher price. Whether anything has a market price depends on people and markets that the project does not control.</p>
+
+<h3 id="when">When will BCUS launch on Base mainnet?</h3>
+<p>There is no date. BCUS will only be deployed on mainnet once a set of conditions is met, including the legal review, an independent security audit and several correct weekly reports on the test network. The full list is in section 16 of the whitepaper. Even after a mainnet deployment, the publisher will not sell BCUS.</p>
+
+<h3 id="usa">Why is Bloodcoin not offered in the United States?</h3>
+<p>Offering tokens to persons in the United States raises legal questions the project does not intend to take on. Bloodcoin is therefore not offered to citizens or residents of the United States or to persons located there, and it is not offered to the public in the European Union.</p>
+
+<h2 id="s3"><span class="n">3</span>The mortality factor</h2>
+
+<h3 id="factor">How does the mortality factor work?</h3>
+<p>Every Monday, a report compares the deaths of the four most recent usable weeks with the same four calendar weeks in the three previous years. If the difference is three percent or less, the target factor is 1.0. Beyond that, each further percent of excess mortality lowers the target by five percent, and each percent below the baseline raises it by five percent. The target always stays between 0.5 and 1.5.</p>
+<p>The factor that is actually used moves toward the target by at most 0.05 per report. A single report can therefore change weekly issuance by at most five percent. In normal years the factor stays at or very close to 1.0.</p>
+
+<h3 id="eightweeks">Why does the report use weeks that are eight weeks old?</h3>
+<p>The CDC revises recent weeks as late death certificates arrive. Only weeks that are at least eight weeks old are stable enough to use.</p>
+
+<h3 id="check">Where do the figures come from, and can I check them?</h3>
+<p>From the CDC's public data portal, data.cdc.gov. Every report is published on the <a href="https://bloodcoin-us.com/oracle">oracle page</a> together with the raw CDC rows it was calculated from. A button on that page repeats the calculation in your own browser, directly against the CDC portal, so you do not have to trust the publisher's server.</p>
+
+<h3 id="manipulate">Can the publisher manipulate the factor?</h3>
+<p>Partly, and the project says so openly. The weekly report is signed with an oracle key held by the publisher. Whoever holds that key could submit plausible but false figures. The contract limits the damage: each report can move issuance by at most five percent, it rejects figures that are grossly wrong, and every report can be checked publicly against the CDC data. Before mainnet the key will move from the server to a hardware signing device. If the oracle is ever retired, the factor resets to exactly 1.0.</p>
+
+<h2 id="s4"><span class="n">4</span>Supply, mining and staking</h2>
+
+<h3 id="supply">How many BCUS will ever exist?</h3>
+<p>At most 21,000,000 BCUS. The cap is fixed in the token contract and can never be exceeded. One million are the founder allocation (section 5 below). The rest is issued week by week: about 25,240 BCUS per week at a factor of 1.0, halving about every eight years. Because the factor changes, the year in which issuance ends is not known in advance. With a lasting factor below about 0.95 the cap is never reached.</p>
+
+<h3 id="newcoins">How do new BCUS come into existence?</h3>
+<p>Only through the weekly emission. Half of each week's amount goes to miners and half to stakers. Nobody, including the publisher, can create BCUS in any other way.</p>
+
+<h3 id="mining">Can I mine BCUS?</h3>
+<p>On the test network, yes, with an ordinary computer and a Base address. A miner searches for a number whose hash meets a target. The reward is paid by elapsed time, so flooding the contract with solutions earns almost nothing extra. Test-network BCUS have no value. Mining on mainnet only becomes possible once BCUS is deployed there.</p>
+
+<h3 id="staking">What is staking, and what does it pay?</h3>
+<p>Holders can deposit BCUS in the staking contract and withdraw at any time. The staking half of each week's emission is shared among depositors over seven days, in proportion to their deposit. What anyone receives depends on the emission, the factor and how much others have deposited. It is not fixed, not guaranteed and not a return promised by anyone. That is why no staking page shows a percentage. Tokens that stream while nobody has deposited anything are burned.</p>
+
+<h2 id="s5"><span class="n">5</span>The founder allocation</h2>
+
+<h3 id="founder">How many BCUS does the founder get?</h3>
+<p>One million BCUS, 4.8 percent of the cap, created once at deployment and placed directly in a lock contract. They become available linearly over ten years: 100,000 BCUS per year, accrued by the second, with no single large unlock. The tokens can only go to one fixed address, which cannot be changed. There is no team, advisor or marketing allocation.</p>
+
+<h3 id="founderstake">Can the founder take most of the new tokens?</h3>
+<p>No. New tokens go only to miners and stakers. In the first year, the founder's release of 100,000 BCUS compares with about 1.3 million BCUS issued to the public. Earlier designs had a flaw that could have favoured the founder; it was found in a review and removed before the current test deployment.</p>
+
+<h2 id="s6"><span class="n">6</span>Chain, token and demo exchange</h2>
+
+<h3 id="twosystems">What is the difference between the Bloodcoin chain and BCUS on Base?</h3>
+<p>The Bloodcoin chain is the project's first experiment: a small proof-of-work blockchain with an explorer at <a href="https://node.bloodcoin-us.com">node.bloodcoin-us.com</a>. It runs on a single node operated by the publisher, and its coins have no value. BCUS on Base is the token described on this page and in the whitepaper. The two are separate systems.</p>
+
+<h3 id="exchange">Is the exchange real? Can I pay in money?</h3>
+<p>No. The exchange at exchange.bloodcoin-us.com is a demonstration. It trades coins of the Bloodcoin chain against dollar balances that are test money. Dollars cannot be paid in or out, and the exchange does not trade BCUS on Base.</p>
+
+<h2 id="s7"><span class="n">7</span>Safety and scams</h2>
+
+<h3 id="scam">Someone offered to sell me BCUS. Is that real?</h3>
+<p>No. The project does not sell BCUS and has no sales partners, agents or official groups that do. Anyone who offers BCUS for money is not acting for the project. The project will never ask you for a recovery phrase, a private key or a payment. Please report such offers to <a href="mailto:contact@bloodcoin-us.com">contact@bloodcoin-us.com</a>.</p>
+
+<h3 id="audit">Have the contracts been audited?</h3>
+<p>Not yet by an independent firm. The contracts have an automated test suite and have been reviewed, and that review led to changes. An independent audit is a condition for mainnet.</p>
+
+<h3 id="change">Can the rules be changed later?</h3>
+<p>No. The token, emission, mining and staking contracts have no owner, no upgrade function and no admin key. Their parameters are fixed when they are deployed. The only remaining point of trust is the oracle key described in section 3.</p>
+
+<h3 id="code">Where is the source code?</h3>
+<p>On <a href="https://github.com/Wagnermichel88/Bloodcoin">GitHub</a>, under the MIT licence. The test-network contracts are verified and readable on Basescan; their addresses are listed in section 17 of the whitepaper.</p>
+
+<h2 id="s8"><span class="n">8</span>Legal and data protection</h2>
+
+<h3 id="legal">Is Bloodcoin regulated?</h3>
+<p>The publisher is resident in Switzerland. A Swiss law firm has been asked to review how BCUS is classified under Swiss financial market law and which obligations apply, including under the Anti-Money Laundering Act. The review is not complete. Until it is, the publisher sells nothing and opens no trading pool.</p>
+
+<h3 id="tax">Do I have to pay tax on BCUS?</h3>
+<p>That depends on where you live and on your situation. The project cannot give tax advice. Ask a tax adviser in your country.</p>
+
+<h3 id="data">What data do the websites collect?</h3>
+<p>Only what is needed: an email address and a password hash for demo exchange accounts, and an email address for the newsletter if you sign up. The data is stored on a server in Germany, is not sold or shared, and the websites use no tracking. Details are in the <a href="https://bloodcoin-us.com/legal.html">privacy policy</a>.</p>
+
+<h3 id="more">My question is not here.</h3>
+<p>Read the <a href="https://bloodcoin-us.com/whitepaper">whitepaper</a> or write to <a href="mailto:contact@bloodcoin-us.com">contact@bloodcoin-us.com</a>. Questions about price, value or whether to acquire BCUS will not be answered.</p>
+
+<p class="small">Version 1.0 draft, 21 October 2026.</p>
+
+<footer>Bloodcoin is still in development. BCUS is not yet available for purchase. Not investment advice. Not offered to persons in the United States. This page has not yet been reviewed by counsel.</footer>
+</article>
+
+</body>
+</html>
