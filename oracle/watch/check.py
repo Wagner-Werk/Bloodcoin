@@ -37,6 +37,8 @@ import report  # noqa: E402
 TOPIC_REPORTED = "0x4229c473bc7b232472389f581f258012ee8d5d83be43bf9e2fba8ed310f22313"  # Reported(uint256,uint256,uint256)
 TOPIC_RETIRED = "0xc15f68f0a72806ff3f8bf2435385a67c4c22413f1c7931ef7bcea718e6ffcf03"   # Retired()
 SEL_RETIRED = "0x2eb38ae0"                                                              # retired()
+SEL_EMISSION = "0x827c049e"                                                             # emission()
+SEL_LAST_WEEK = "0xe1ce7fde"                                                            # lastWeekEnding()
 
 BLOCK_SECONDS = 2  # Base
 
@@ -164,7 +166,11 @@ def main() -> None:
     if int(rpc.call("eth_call", [{"to": a.oracle, "data": SEL_RETIRED}, "latest"]), 16):
         problems.append("Melder ist abgeschaltet (retired).")
 
-    last_ts = None
+    emission = "0x" + rpc.call("eth_call", [{"to": a.oracle, "data": SEL_EMISSION}, "latest"])[-40:]
+    chain_last = int(rpc.call("eth_call", [{"to": emission, "data": SEL_LAST_WEEK}, "latest"]), 16)
+    print(f"Emission {emission}, letzte Woche laut Vertrag: {report.iso(chain_last) if chain_last else 'keine'}")
+
+    last_ts, last_week = None, 0
     for log in logs:
         if log["topics"][0] == TOPIC_RETIRED:
             problems.append(f"Retired in Transaktion {log['transactionHash']}")
@@ -179,6 +185,11 @@ def main() -> None:
               f"{recent} / {baseline} -> {'NICHT OK' if found else 'ok'}")
         problems += [f"Woche {report.iso(week)}: {f}" for f in found]
         last_ts = int(rpc.call("eth_getBlockByNumber", [log["blockNumber"], False])["timestamp"], 16)
+        last_week = max(last_week, week)
+
+    # Kennt der Vertrag eine neuere Woche als die gefundenen Ereignisse, hat die Suche etwas verpasst.
+    if chain_last > last_week and (logs or a.days == 0):
+        problems.append(f"Vertrag meldet Woche {report.iso(chain_last)}, die Wache hat sie nicht gefunden.")
 
     silent = (now - last_ts) / 86400 if last_ts else None
     if silent is None:
