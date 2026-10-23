@@ -25,6 +25,7 @@ import json
 import os
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -61,6 +62,11 @@ class Rpc:
             try:
                 with urllib.request.urlopen(req, timeout=30) as r:
                     res = json.loads(r.read())
+            except urllib.error.HTTPError as e:
+                # sepolia.base.org antwortet auf zu grosse Blockspannen mit HTTP 413
+                if e.code == 413:
+                    raise RangeError(str(e)) from e
+                err = str(e)
             except OSError as e:
                 err = str(e)
             else:
