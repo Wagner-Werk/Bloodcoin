@@ -101,10 +101,11 @@ def get_logs(rpc: Rpc, oracle: str, start: int, end: int) -> list:
     return logs
 
 
-def block_before(rpc: Rpc, head: int, ts: int) -> int:
-    """Letzter Block mit Zeitstempel <= ts, per Halbierungssuche. Die Blockzeit ist nicht fest
-    (Base hat sie schon verkürzt), darum wird nicht mit Sekunden pro Block gerechnet."""
-    lo, hi = 0, head
+def block_before(rpc: Rpc, first: int, head: int, ts: int) -> int:
+    """Letzter Block ab `first` mit Zeitstempel <= ts (sonst `first`), per Halbierungssuche. Die
+    Blockzeit ist nicht fest (Base hat sie schon verkürzt), darum wird nicht mit Sekunden pro Block
+    gerechnet. Unter `first` wird nicht gesucht, weil öffentliche RPCs alte Blöcke verwerfen."""
+    lo, hi = first, head
     while lo < hi:
         mid = (lo + hi + 1) // 2
         if int(rpc.call("eth_getBlockByNumber", [hex(mid), False])["timestamp"], 16) <= ts:
@@ -170,7 +171,7 @@ def main() -> None:
     rpc = Rpc(a.rpc)
     head = int(rpc.call("eth_blockNumber", []), 16)
     now = int(rpc.call("eth_getBlockByNumber", [hex(head), False])["timestamp"], 16)
-    start = a.from_block if a.days == 0 else max(a.from_block, block_before(rpc, head, now - a.days * 86400))
+    start = a.from_block if a.days == 0 else block_before(rpc, a.from_block, head, now - a.days * 86400)
     start_ts = int(rpc.call("eth_getBlockByNumber", [hex(start), False])["timestamp"], 16)
     logs = get_logs(rpc, a.oracle, start, head)
     print(f"Blöcke {start} bis {head}: {len(logs)} Ereignisse")
