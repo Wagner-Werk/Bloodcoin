@@ -41,7 +41,7 @@ nachträgt, und bei Fehlalarmen anpassen.
   schickt vorher eine Mail; dann unter Actions mit einem Klick wieder einschalten.
 - Mails zu geplanten Läufen gehen an den, der den Zeitplan zuletzt geändert hat. Darum zusätzlich
   `NTFY_URL` setzen.
-- Die Wache prüft nur die letzten 21 Tage. Alles prüfen: `--days 0`.
+- Die Wache prüft nur die letzten 21 Tage (nach Zeitstempel, nicht nach Blockzahl). Alles prüfen: `--days 0`.
 
 ## Von Hand
 

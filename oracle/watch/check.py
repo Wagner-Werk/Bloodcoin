@@ -40,7 +40,6 @@ SEL_RETIRED = "0x2eb38ae0"                                                      
 SEL_EMISSION = "0x827c049e"                                                             # emission()
 SEL_LAST_WEEK = "0xe1ce7fde"                                                            # lastWeekEnding()
 
-BLOCK_SECONDS = 2  # Base
 
 # Toleranzen. Die CDC trägt bei jüngeren Wochen oft noch 1 bis 2 % Tote nach, also darf die
 # Meldung bei `recent` etwas unter den heutigen Zahlen liegen, aber kaum darüber. Die Vorjahre
@@ -102,6 +101,19 @@ def get_logs(rpc: Rpc, oracle: str, start: int, end: int) -> list:
     return logs
 
 
+def block_before(rpc: Rpc, head: int, ts: int) -> int:
+    """Letzter Block mit Zeitstempel <= ts, per Halbierungssuche. Die Blockzeit ist nicht fest
+    (Base hat sie schon verkürzt), darum wird nicht mit Sekunden pro Block gerechnet."""
+    lo, hi = 0, head
+    while lo < hi:
+        mid = (lo + hi + 1) // 2
+        if int(rpc.call("eth_getBlockByNumber", [hex(mid), False])["timestamp"], 16) <= ts:
+            lo = mid
+        else:
+            hi = mid - 1
+    return lo
+
+
 def cdc_weeks(days: list[str]) -> dict[int, int]:
     q = {
         "state": "United States",
@@ -158,7 +170,8 @@ def main() -> None:
     rpc = Rpc(a.rpc)
     head = int(rpc.call("eth_blockNumber", []), 16)
     now = int(rpc.call("eth_getBlockByNumber", [hex(head), False])["timestamp"], 16)
-    start = a.from_block if a.days == 0 else max(a.from_block, head - a.days * 86400 // BLOCK_SECONDS)
+    start = a.from_block if a.days == 0 else max(a.from_block, block_before(rpc, head, now - a.days * 86400))
+    start_ts = int(rpc.call("eth_getBlockByNumber", [hex(start), False])["timestamp"], 16)
     logs = get_logs(rpc, a.oracle, start, head)
     print(f"Blöcke {start} bis {head}: {len(logs)} Ereignisse")
 
@@ -193,8 +206,8 @@ def main() -> None:
 
     silent = (now - last_ts) / 86400 if last_ts else None
     if silent is None:
-        if (head - start) * BLOCK_SECONDS >= a.max_silence_days * 86400:
-            problems.append(f"Keine Meldung in den letzten {a.days} Tagen.")
+        if now - start_ts >= a.max_silence_days * 86400:
+            problems.append(f"Keine Meldung seit Block {start} ({(now - start_ts) / 86400:.0f} Tage).")
     elif silent > a.max_silence_days:
         problems.append(f"Letzte Meldung vor {silent:.0f} Tagen.")
 
