@@ -13,13 +13,13 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <style>html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
 <style>
-/* Layout: one old book lying open on a dark, faintly gridded night desk; every leaf turns in 3D around the spine. Single committed dark world. */
+/* Layout: one old book lying open in front of a slow golden code rain (canvas); every leaf turns in 3D around the spine. Single committed dark world. */
 :root{
   --night:#0a0c13; --night-2:#141a2b; --grid:rgba(200,155,74,.05);
   --paper:#eadfc4; --paper-2:#dfcfa8; --paper-edge:#b89b68;
   --ink:#2b2018; --ink-soft:#6a5643; --rule:rgba(43,32,24,.28);
   --blood:#8f1016; --blood-hi:#c0222a; --gold:#c9a25a; --ember:#df7a2e;
-  --leather:#24090b; --leather-2:#3d1113;
+  --leather:#3a0810; --leather-2:#6a1220;
   --f-display:"IM Fell English SC","IM Fell English",Georgia,"Times New Roman",serif;
   --f-italic:"IM Fell English",Georgia,serif;
   --f-body:"EB Garamond",Garamond,Georgia,"Times New Roman",serif;
@@ -29,20 +29,18 @@
 }
 html,body{height:100%}
 body{
-  background:
-    radial-gradient(ellipse 60% 55% at 50% 48%, rgba(223,122,46,.13), transparent 70%),
-    linear-gradient(var(--grid) 1px, transparent 1px) 0 0/44px 44px,
-    linear-gradient(90deg,var(--grid) 1px, transparent 1px) 0 0/44px 44px,
-    radial-gradient(ellipse at 50% 0%, var(--night-2), var(--night) 70%);
-  background-color:var(--night);
+  background:#050403;
   color:var(--paper);
   font-family:var(--f-body);
   overflow:hidden;
   display:flex; flex-direction:column;
 }
+#matrix{position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; display:block}
+.vignette{position:fixed; inset:0; z-index:0; pointer-events:none; background:radial-gradient(ellipse 55% 60% at 50% 50%, rgba(5,4,3,.82), rgba(5,4,3,.35) 70%, rgba(5,4,3,.1))}
+.banner,.stage,.controls{position:relative; z-index:1}
 .banner{
   flex:none; text-align:center; font:500 12px/1.4 var(--f-mono); letter-spacing:.02em;
-  color:#e8c88f; background:rgba(143,16,22,.22); border-bottom:1px solid rgba(201,162,90,.25);
+  color:#e8c88f; background:#1f0809; border-bottom:1px solid rgba(201,162,90,.25);
   padding-block:8px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px));
 }
 .banner b{color:var(--gold);letter-spacing:.12em;margin-right:.4em}
@@ -78,9 +76,6 @@ body{
 
 /* paper */
 .paper{background:
-   radial-gradient(circle at 18% 22%, rgba(140,96,40,.10) 0 3%, transparent 4%),
-   radial-gradient(circle at 76% 81%, rgba(140,96,40,.09) 0 2.5%, transparent 3.5%),
-   radial-gradient(circle at 63% 12%, rgba(140,96,40,.07) 0 1.6%, transparent 2.4%),
    radial-gradient(ellipse at 50% 50%, var(--paper) 55%, var(--paper-2) 100%);
   color:var(--ink); box-shadow:inset 0 0 0 1px rgba(120,90,50,.25)}
 .paper.r{border-radius:0 3px 3px 0}
@@ -186,25 +181,24 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
 .plate .cap{text-align:center; padding-block:.6em 7%; font:italic .82em/1.35 var(--f-italic); color:var(--ink-soft)}
 .plate .cap span{display:block; font:.62em var(--f-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--blood); font-style:normal}
 
-/* leather covers */
-.cover{background:
-   radial-gradient(ellipse at 30% 20%, rgba(255,255,255,.06), transparent 50%),
-   repeating-radial-gradient(circle at 70% 60%, rgba(0,0,0,.08) 0 2px, transparent 2px 5px),
-   linear-gradient(135deg,var(--leather-2),var(--leather) 60%,#160506);
-  color:var(--gold)}
-.cover.r{border-radius:2px 8px 8px 2px; box-shadow:inset 6px 0 10px rgba(0,0,0,.5), inset -1px 0 0 rgba(255,255,255,.06)}
-.cover.l{border-radius:8px 2px 2px 8px; box-shadow:inset -6px 0 10px rgba(0,0,0,.5)}
-.tooling{position:absolute; inset:5.5%; border:1px solid rgba(201,162,90,.55); outline:1px solid rgba(201,162,90,.3); outline-offset:5px;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.1em; text-align:center; padding:8%}
-.tooling::before,.tooling::after{content:"✦"; position:absolute; left:50%; transform:translateX(-50%); font-size:.8em; color:var(--gold)}
-.tooling::before{top:-.65em} .tooling::after{bottom:-.65em}
-.cover h1{color:#e2c07a; font-size:2.7em; letter-spacing:.02em; text-shadow:0 1px 0 rgba(0,0,0,.6), 0 -1px 0 rgba(255,230,180,.15)}
-.cover .coin{width:58%; aspect-ratio:1; border-radius:50%; box-shadow:0 10px 30px rgba(0,0,0,.65), 0 0 0 1px rgba(201,162,90,.3); filter:saturate(1.05)}
-.cover .sub{font:italic 1.1em var(--f-italic); color:#d7b97d}
-.cover .vol{font:.62em var(--f-mono); letter-spacing:.24em; text-transform:uppercase; color:rgba(201,162,90,.8)}
+/* leather covers: pre-rendered wine-red leather with pressed gold tooling (cover.jpg / back.jpg); live text sits on top */
+.cover{background:#5a0c18; color:var(--gold)}
+.cover .skin{position:absolute; inset:0; width:100%; height:100%; object-fit:fill; display:block; pointer-events:none}
+.cover.r{border-radius:2px 8px 8px 2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+.cover.l{border-radius:8px 2px 2px 8px; box-shadow:inset -6px 0 10px rgba(0,0,0,.55)}
+.cover .front-txt{position:absolute; left:0; right:0; bottom:17%; text-align:center}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+.tooling{position:absolute; inset:14% 12%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.1em; text-align:center}
+.gilt{color:#e2c07a; text-shadow:0 -1px 0 rgba(28,0,5,.9), 0 1px 0 rgba(255,196,180,.18)}
+.cover .vol{font:500 .66em var(--f-mono); letter-spacing:.3em; text-transform:uppercase; color:#d8b26a}
+.cover .sub{font:italic 1.1em var(--f-italic); color:#e2c07a}
+.cover .vol{font:.66em var(--f-mono); letter-spacing:.28em; text-transform:uppercase; color:rgba(201,162,90,.8)}
 .cover .open{font:.62em var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:rgba(226,192,122,.75); animation:pulse 2.4s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.35}}
 .sig{width:46%; opacity:.9}
+.fw .pg-in{gap:.6em} .fw p{font-size:.93em; line-height:1.4; text-align:justify}
+.fw-sig{margin-top:auto; align-self:flex-end; display:flex; flex-direction:column; align-items:center; gap:.1em}
+.sig-ink{width:9em; filter:brightness(0) saturate(100%) invert(12%) sepia(30%) saturate(900%) hue-rotate(320deg); opacity:.85}
 
 .marble{background:
    radial-gradient(ellipse 40% 18% at 20% 30%, rgba(201,162,90,.25), transparent 70%),
@@ -224,7 +218,7 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
 
 .controls{flex:none; display:flex; align-items:center; justify-content:center; gap:14px; padding-block:6px 14px;
   padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px))}
-.nav{width:44px; height:44px; border-radius:50%; border:1px solid rgba(201,162,90,.45); background:rgba(20,26,43,.7); color:var(--gold); cursor:pointer; font:20px/1 var(--f-body); display:grid; place-items:center}
+.nav{width:44px; height:44px; border-radius:50%; border:1px solid rgba(201,162,90,.45); background:rgba(12,9,6,.8); color:var(--gold); cursor:pointer; font:20px/1 var(--f-body); display:grid; place-items:center}
 .nav:hover:not(:disabled){background:rgba(143,16,22,.35)}
 .nav:disabled{opacity:.3; cursor:default}
 .where{min-width:0; text-align:center; display:flex; flex-direction:column; gap:3px}
@@ -238,9 +232,10 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
 <link rel="stylesheet" href="/assets/book/fonts.css">
 
 
+<canvas id="matrix" aria-hidden="true"></canvas><div class="vignette" aria-hidden="true"></div>
 <div class="banner" role="note"><b>IN DEVELOPMENT</b>Bloodcoin is still in development. BCUS is not yet available for purchase.</div>
 
-<main class="stage" id="stage" aria-label="Bloodcoin, a book in seven leaves">
+<main class="stage" id="stage" aria-label="Bloodcoin, a book in eight leaves">
   <div class="clip"><div class="book" id="book"><div class="ribbon" aria-hidden="true"></div></div></div>
 </main>
 
@@ -253,13 +248,22 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
 <!-- Pages in reading order. data-kind: cover | marble | plate | paper -->
 <template id="pages">
   <section data-kind="cover" data-label="Bloodcoin" data-id="cover">
-    <div class="tooling">
-      <div class="vol">Vol. I &middot; MMXXVI</div>
-      <h1>Bloodcoin</h1>
-      <img class="coin" src="/assets/book/coin.webp" alt="The Bloodcoin: a black coin with a single red drop">
-      <div class="sub">The chain remembers.</div>
-      <div class="open">Open the book &rsaquo;</div>
-    </div>
+    <img class="skin" src="/assets/book/cover.jpg" alt="">
+    <h1 class="sr">Bloodcoin. Vol. I, MMXXVI. The chain remembers.</h1>
+    <div class="front-txt"><div class="open gilt">Open the book &rsaquo;</div></div>
+  </section>
+
+  <section data-kind="paper" data-label="The Register of Silence" data-id="foreword" class="fw">
+    <div class="eyebrow">Foreword</div>
+    <h2>The Register of Silence</h2>
+    <p class="drop">We have learned to disinfect death out of sight. We have banished it behind the sterile glass of intensive care units, wrapped it in unreadable official reports and made it vanish in the endless data streams of our glossy world. Our age celebrates the eternal: eternal youth, endless economic growth, the immortal algorithm. Yet while we race ahead in a digital frenzy, the most basic truth of our existence is left behind: our own finitude.</p>
+    <p>Bloodcoin is my attempt to give form to what we push away. It is not a promise of future wealth, not a product for the quick speculative market, and not greed that loses itself in artificial frenzies of numbers. It is a living memento mori, engraved into the incorruptible architecture of the blockchain.</p>
+  </section>
+
+  <section data-kind="paper" data-label="The Register of Silence" data-id="foreword-2" class="fw">
+    <p>Every Monday the code looks at the real, unrelenting numbers of life and death. It draws a line. It burns the bare statistics of mortality indelibly into the blocks. What society would rather suppress and smooth over becomes a lasting digital monument here. The coin, BCUS, is no more than the pigment of this performance. It is not born of computing power alone, but of the heartbeat of time itself. Whoever holds it, stakes it or follows its path becomes not merely a player in a financial logic, but a witness to an uncomfortable truth.</p>
+    <p>I did not create this system to serve the market, but to disturb it. In a world that tokenizes everything and makes everything tradable, Bloodcoin makes the inevitable visible: the chain does not forget. And the rhythm of transience beats on, block by block.</p>
+    <div class="fw-sig"><img class="sig-ink" src="/assets/book/signature.png" alt="Signature: Wagner"><span class="small">Michel Wagner</span></div>
   </section>
 
   <section data-kind="paper" data-label="Contents" data-id="contents">
@@ -267,14 +271,15 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
     <h2>Memento mori, written in blocks.</h2>
     <div class="orn"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M5 0C5 0 0 6.5 0 9a5 5 0 0 0 10 0C10 6.5 5 0 5 0z" fill="currentColor"/></svg></div>
     <ol class="toc">
-      <li><button data-go="title"><span class="t">The chain remembers</span><span class="dots"></span><span class="n">II</span></button></li>
-      <li><button data-go="idea"><span class="t">I. The idea</span><span class="dots"></span><span class="n">III</span></button></li>
-      <li><button data-go="how"><span class="t">II. How it works</span><span class="dots"></span><span class="n">IV</span></button></li>
-      <li><button data-go="register"><span class="t">III. The register</span><span class="dots"></span><span class="n">V</span></button></li>
-      <li><button data-go="witness"><span class="t">IV. Witness it</span><span class="dots"></span><span class="n">VI</span></button></li>
-      <li><button data-go="trace"><span class="t">V. The trace</span><span class="dots"></span><span class="n">VII</span></button></li>
-      <li><button data-go="letters"><span class="t">VI. Letters</span><span class="dots"></span><span class="n">VIII</span></button></li>
-      <li><button data-go="colophon"><span class="t">Colophon</span><span class="dots"></span><span class="n">IX</span></button></li>
+      <li><button data-go="foreword"><span class="t">The Register of Silence</span><span class="dots"></span><span class="n">I</span></button></li>
+      <li><button data-go="title"><span class="t">The chain remembers</span><span class="dots"></span><span class="n">IV</span></button></li>
+      <li><button data-go="idea"><span class="t">I. The idea</span><span class="dots"></span><span class="n">V</span></button></li>
+      <li><button data-go="how"><span class="t">II. How it works</span><span class="dots"></span><span class="n">VI</span></button></li>
+      <li><button data-go="register"><span class="t">III. The register</span><span class="dots"></span><span class="n">VII</span></button></li>
+      <li><button data-go="witness"><span class="t">IV. Witness it</span><span class="dots"></span><span class="n">VIII</span></button></li>
+      <li><button data-go="trace"><span class="t">V. The trace</span><span class="dots"></span><span class="n">IX</span></button></li>
+      <li><button data-go="letters"><span class="t">VI. Letters</span><span class="dots"></span><span class="n">X</span></button></li>
+      <li><button data-go="colophon"><span class="t">Colophon</span><span class="dots"></span><span class="n">XI</span></button></li>
     </ol>
     <div class="exlibris">
       <span class="mono">EX LIBRIS</span>
@@ -382,15 +387,49 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
   </section>
 
   <section data-kind="cover" data-label="The end" data-id="end">
+    <img class="skin" src="/assets/book/back.jpg" alt="">
     <div class="tooling">
-      <div class="vol">Finis</div>
-      <div class="sub">Every week, death leaves a mark.<br>From now on, it leaves one on the chain.</div>
-      <img class="sig" src="/assets/book/signature.png" alt="Signature: Wagner 26">
-      <div class="vol">bloodcoin-us.com</div>
+      <div class="vol gilt">Finis</div>
+      <div class="sub gilt">Every week, death leaves a mark.<br>From now on, it leaves one on the chain.</div>
+      <img class="sig" src="/assets/book/signature.png" alt="Signature: Wagner">
+      <div class="vol gilt">bloodcoin-us.com</div>
     </div>
   </section>
 </template>
 
+<script>
+// Golden code rain behind the book: slow, dim, paused when hidden, a still frame with reduced motion.
+(() => {
+  const c = document.getElementById('matrix'), x = c.getContext('2d');
+  const chars = '0123456789ABCDEF\u2020\u2021BLD\u25C6\u00A7\u2234';
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w, h, fs, cols, drops, last = 0;
+  function size() {
+    const r = Math.min(devicePixelRatio || 1, 2);
+    w = innerWidth; h = innerHeight; c.width = w * r; c.height = h * r; x.setTransform(r, 0, 0, r, 0, 0);
+    fs = w < 600 ? 13 : 16; cols = Math.ceil(w / fs);
+    drops = Array.from({ length: cols }, () => ({ y: Math.random() * -h / fs, v: .25 + Math.random() * .55 }));
+    x.fillStyle = '#050403'; x.fillRect(0, 0, w, h);
+    if (still) for (let i = 0; i < 40; i++) frame(true);
+  }
+  function frame(force) {
+    x.fillStyle = 'rgba(5,4,3,.09)'; x.fillRect(0, 0, w, h);
+    x.font = fs + 'px "JetBrains Mono", monospace';
+    for (let i = 0; i < cols; i++) {
+      const d = drops[i], ch = chars[Math.random() * chars.length | 0], py = d.y * fs;
+      x.fillStyle = Math.random() < .04 ? '#c0222a' : 'rgba(255,226,150,.85)';
+      x.fillText(ch, i * fs, py);
+      x.fillStyle = 'rgba(201,162,90,.35)';
+      x.fillText(chars[Math.random() * chars.length | 0], i * fs, py - fs);
+      d.y += d.v;
+      if (py > h && Math.random() > .975) { d.y = -Math.random() * 20; d.v = .25 + Math.random() * .55; }
+    }
+  }
+  function loop(t) { if (t - last > 50) { frame(); last = t; } requestAnimationFrame(loop); }
+  size(); addEventListener('resize', size);
+  if (!still) requestAnimationFrame(loop);
+})();
+</script>
 <script>
 (() => {
   // The register reads the same signed reports as the check page (/oracle).
