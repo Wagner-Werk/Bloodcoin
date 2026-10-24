@@ -124,13 +124,13 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .imprint{font:italic .8em/1.4 var(--f-italic); color:var(--ink-soft)}
 
 /* contents */
-.toc{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.55em}
+.toc{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.42em}
 .toc button{all:unset; cursor:pointer; display:flex; align-items:baseline; gap:.4em; width:100%; font-size:1.02em}
 .toc button:hover .t{color:var(--blood)}
 .toc .t{font-family:var(--f-italic)}
 .toc .dots{flex:1; border-bottom:1px dotted var(--ink-soft); transform:translateY(-.25em)}
 .toc .n{font-family:var(--f-italic); font-variant-numeric:tabular-nums}
-.exlibris{margin-top:auto; border:1px solid var(--rule); padding:.9em; text-align:center; display:flex; flex-direction:column; gap:.3em}
+.exlibris{margin-top:auto; border:1px solid var(--rule); padding:.7em; text-align:center; display:flex; flex-direction:column; gap:.3em}
 .exlibris .k{font:1.05em var(--f-display); letter-spacing:.08em}
 
 /* steps */
@@ -197,6 +197,7 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
 @keyframes pulse{50%{opacity:.35}}
 .sig{width:46%; opacity:.9}
 .fw .pg-in{gap:.6em} .fw p{font-size:.93em; line-height:1.4; text-align:justify}
+.motto{margin:0 0 .2em; align-self:flex-end; text-align:right; font-family:var(--f-italic); font-style:italic; font-size:.92em; opacity:.85} .motto span{display:block; font-family:var(--f-body); font-style:normal; font-size:.72em; letter-spacing:.08em; text-transform:uppercase; opacity:.7}
 .fw-sig{margin-top:auto; align-self:flex-end; display:flex; flex-direction:column; align-items:center; gap:.1em}
 .sig-ink{width:9em; filter:brightness(0) saturate(100%) invert(12%) sepia(30%) saturate(900%) hue-rotate(320deg); opacity:.85}
 
@@ -253,32 +254,19 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
     <div class="front-txt"><div class="open gilt">Open the book &rsaquo;</div></div>
   </section>
 
-  <section data-kind="paper" data-label="The Register of Silence" data-id="foreword" class="fw">
-    <div class="eyebrow">Foreword</div>
-    <h2>The Register of Silence</h2>
-    <p class="drop">We have learned to disinfect death out of sight. We have banished it behind the sterile glass of intensive care units, wrapped it in unreadable official reports and made it vanish in the endless data streams of our glossy world. Our age celebrates the eternal: eternal youth, endless economic growth, the immortal algorithm. Yet while we race ahead in a digital frenzy, the most basic truth of our existence is left behind: our own finitude.</p>
-    <p>Bloodcoin is my attempt to give form to what we push away. It is not a promise of future wealth, not a product for the quick speculative market, and not greed that loses itself in artificial frenzies of numbers. It is a living memento mori, engraved into the incorruptible architecture of the blockchain.</p>
-  </section>
-
-  <section data-kind="paper" data-label="The Register of Silence" data-id="foreword-2" class="fw">
-    <p>Every Monday the code looks at the real, unrelenting numbers of life and death. It draws a line. It burns the bare statistics of mortality indelibly into the blocks. What society would rather suppress and smooth over becomes a lasting digital monument here. The coin, BCUS, is no more than the pigment of this performance. It is not born of computing power alone, but of the heartbeat of time itself. Whoever holds it, stakes it or follows its path becomes not merely a player in a financial logic, but a witness to an uncomfortable truth.</p>
-    <p>I did not create this system to serve the market, but to disturb it. In a world that tokenizes everything and makes everything tradable, Bloodcoin makes the inevitable visible: the chain does not forget. And the rhythm of transience beats on, block by block.</p>
-    <div class="fw-sig"><img class="sig-ink" src="/assets/book/signature.png" alt="Signature: Wagner"><span class="small">Michel Wagner</span></div>
-  </section>
-
   <section data-kind="paper" data-label="Contents" data-id="contents">
+    <p class="motto">&ldquo;The chain does not forget.&rdquo;<span>Michel Wagner</span></p>
     <div class="eyebrow">Contents</div>
     <h2>Memento mori, written in blocks.</h2>
-    <div class="orn"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M5 0C5 0 0 6.5 0 9a5 5 0 0 0 10 0C10 6.5 5 0 5 0z" fill="currentColor"/></svg></div>
     <ol class="toc">
-      <li><button data-go="foreword"><span class="t">The Register of Silence</span><span class="dots"></span><span class="n">I</span></button></li>
-      <li><button data-go="title"><span class="t">The chain remembers</span><span class="dots"></span><span class="n">IV</span></button></li>
-      <li><button data-go="idea"><span class="t">I. The idea</span><span class="dots"></span><span class="n">V</span></button></li>
-      <li><button data-go="how"><span class="t">II. How it works</span><span class="dots"></span><span class="n">VI</span></button></li>
-      <li><button data-go="register"><span class="t">III. The register</span><span class="dots"></span><span class="n">VII</span></button></li>
-      <li><button data-go="witness"><span class="t">IV. Witness it</span><span class="dots"></span><span class="n">VIII</span></button></li>
-      <li><button data-go="trace"><span class="t">V. The trace</span><span class="dots"></span><span class="n">IX</span></button></li>
-      <li><button data-go="letters"><span class="t">VI. Letters</span><span class="dots"></span><span class="n">X</span></button></li>
+      <li><button data-go="title"><span class="t">The chain remembers</span><span class="dots"></span><span class="n">II</span></button></li>
+      <li><button data-go="idea"><span class="t">I. The idea</span><span class="dots"></span><span class="n">III</span></button></li>
+      <li><button data-go="how"><span class="t">II. How it works</span><span class="dots"></span><span class="n">IV</span></button></li>
+      <li><button data-go="register"><span class="t">III. The register</span><span class="dots"></span><span class="n">V</span></button></li>
+      <li><button data-go="witness"><span class="t">IV. Witness it</span><span class="dots"></span><span class="n">VI</span></button></li>
+      <li><button data-go="trace"><span class="t">V. The trace</span><span class="dots"></span><span class="n">VII</span></button></li>
+      <li><button data-go="letters"><span class="t">VI. Letters</span><span class="dots"></span><span class="n">VIII</span></button></li>
+      <li><button data-go="foreword"><span class="t">Afterword: The Register of Silence</span><span class="dots"></span><span class="n">IX</span></button></li>
       <li><button data-go="colophon"><span class="t">Colophon</span><span class="dots"></span><span class="n">XI</span></button></li>
     </ol>
     <div class="exlibris">
@@ -369,6 +357,19 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
       <div class="btns"><button class="btn" type="submit">Subscribe</button></div>
       <div class="msg" id="nl-msg" role="status"></div>
     </form>
+  </section>
+
+  <section data-kind="paper" data-label="The Register of Silence" data-id="foreword" class="fw">
+    <div class="eyebrow">Afterword</div>
+    <h2>The Register of Silence</h2>
+    <p class="drop">We have learned to disinfect death out of sight. We have banished it behind the sterile glass of intensive care units, wrapped it in unreadable official reports and made it vanish in the endless data streams of our glossy world. Our age celebrates the eternal: eternal youth, endless economic growth, the immortal algorithm. Yet while we race ahead in a digital frenzy, the most basic truth of our existence is left behind: our own finitude.</p>
+    <p>Bloodcoin is my attempt to give form to what we push away. It is not a promise of future wealth, not a product for the quick speculative market, and not greed that loses itself in artificial frenzies of numbers. It is a living memento mori, engraved into the incorruptible architecture of the blockchain.</p>
+  </section>
+
+  <section data-kind="paper" data-label="The Register of Silence" data-id="foreword-2" class="fw">
+    <p>Every Monday the code looks at the real, unrelenting numbers of life and death. It draws a line. It burns the bare statistics of mortality indelibly into the blocks. What society would rather suppress and smooth over becomes a lasting digital monument here. The coin, BCUS, is no more than the pigment of this performance. It is not born of computing power alone, but of the heartbeat of time itself. Whoever holds it, stakes it or follows its path becomes not merely a player in a financial logic, but a witness to an uncomfortable truth.</p>
+    <p>I did not create this system to serve the market, but to disturb it. In a world that tokenizes everything and makes everything tradable, Bloodcoin makes the inevitable visible: the chain does not forget. And the rhythm of transience beats on, block by block.</p>
+    <div class="fw-sig"><img class="sig-ink" src="/assets/book/signature.png" alt="Signature: Wagner"><span class="small">Michel Wagner</span></div>
   </section>
 
   <section data-kind="paper" data-label="Colophon" data-spread-only="1"></section>
