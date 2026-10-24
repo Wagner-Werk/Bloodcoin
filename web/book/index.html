@@ -371,6 +371,8 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
     </form>
   </section>
 
+  <section data-kind="paper" data-label="Colophon" data-spread-only="1"></section>
+
   <section data-kind="paper" data-label="Colophon" data-id="colophon">
     <div class="eyebrow">Colophon</div>
     <h2>About this book</h2>
@@ -380,6 +382,8 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
     <p class="small"><a href="https://bloodcoin-us.com/legal.html" target="_blank" rel="noopener">Legal notice and privacy</a></p>
     <p class="small">Bloodcoin is an art project. Nothing in this book is investment advice. BCUS is not offered to persons in the United States.</p>
   </section>
+
+  <section data-kind="paper" data-label="Plate I" data-spread-only="1"></section>
 
   <section data-kind="plate" data-label="Plate I">
     <div class="frame"><img src="/assets/book/plate-1.jpg" alt="Engraving: two skeletons hold hands beneath a ring of vertebrae while a single drop of blood falls between them"></div>
@@ -453,11 +457,14 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
   }
   const ROMAN = ['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
   const tpl = document.getElementById('pages');
-  const PAGES = [...tpl.content.children].map((s, i) => ({
-    kind: s.dataset.kind, label: s.dataset.label, id: s.dataset.id || null,
-    cls: s.className, html: s.innerHTML, idx: i
-  }));
-  const N = PAGES.length;
+  // spread-only pages are blank versos that keep the plate alone on the last spread; phones skip them
+  let fol = 0;
+  const ALL = [...tpl.content.children].map((s, i) => {
+    const only = !!s.dataset.spreadOnly;
+    return { kind: s.dataset.kind, label: s.dataset.label, id: s.dataset.id || null,
+      cls: s.className, html: s.innerHTML, idx: i, only, fol: only || !i ? 0 : ++fol };
+  });
+  let PAGES = ALL, N = ALL.length;
   const book = document.getElementById('book');
   const stage = document.getElementById('stage');
   const whereEl = document.getElementById('where');
@@ -474,7 +481,8 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
     f.className = 'face ' + (p.kind === 'cover' ? 'cover' : p.kind === 'marble' ? 'marble' : p.kind === 'plate' ? 'plate' : 'paper') + ' ' + sideCls + ' ' + (p.cls || '') + ' ' + (extraCls || '');
     f.dataset.page = p.idx;
     if (p.kind === 'cover' || p.kind === 'marble') { f.innerHTML = p.html; return f; }
-    const num = p.idx; // contents = I
+    if (p.only) { f.className += ' blank'; return f; }
+    const num = p.fol; // first paper page = I
     const pg = document.createElement('div'); pg.className = 'pg';
     if (p.kind === 'plate') { pg.innerHTML = p.html; f.appendChild(pg); return f; }
     pg.innerHTML = `<div class="pg-in">${p.html}</div><footer class="folio"><span class="no">${ROMAN[num] || ''}</span><span class="hash" data-hash="${p.idx}" title="SHA-256 of this page's text">sha256 · computing</span></footer>`;
@@ -485,8 +493,11 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
 
   function build(newMode) {
     // remember which page is in view
-    const page = mode ? visiblePage() : 0;
+    const seen = mode ? PAGES[visiblePage()] : null;
     mode = newMode;
+    PAGES = mode === 'spread' ? ALL : ALL.filter(p => !p.only); N = PAGES.length;
+    let page = seen ? PAGES.indexOf(seen) : 0;
+    if (page < 0) page = PAGES.findIndex(p => p.idx > seen.idx);
     document.body.classList.toggle('single', mode === 'single');
     leaves.forEach(l => l.remove());
     leaves = [];
