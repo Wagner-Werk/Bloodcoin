@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bloodcoin. The chain remembers.</title>
+<meta name="description" content="Bloodcoin is a living memento mori: every Monday the settled death counts of the United States are written onto the Base blockchain, where nobody can erase them.">
+<meta property="og:title" content="Bloodcoin. The chain remembers.">
+<meta property="og:description" content="A living memento mori, written in blocks. Every Monday, on Base.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://bloodcoin-us.com/">
+<meta property="og:image" content="https://bloodcoin-us.com/assets/book/plate-1.jpg">
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>html,body{margin:0}img{max-width:100%}[hidden]{display:none!important}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}</style>
+<style>
+/* Layout: one old book lying open in front of a slow golden code rain (canvas); every leaf turns in 3D around the spine. Single committed dark world. */
+:root{
+  --night:#0a0c13; --night-2:#141a2b; --grid:rgba(200,155,74,.05);
+  --paper:#eadfc4; --paper-2:#dfcfa8; --paper-edge:#b89b68;
+  --ink:#2b2018; --ink-soft:#6a5643; --rule:rgba(43,32,24,.28);
+  --blood:#8f1016; --blood-hi:#c0222a; --gold:#c9a25a; --ember:#df7a2e;
+  --leather:#3a0810; --leather-2:#6a1220;
+  --f-display:"IM Fell English SC","IM Fell English",Georgia,"Times New Roman",serif;
+  --f-italic:"IM Fell English",Georgia,serif;
+  --f-body:"EB Garamond",Garamond,Georgia,"Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --pw:420px; --ph:596px; --fs:16px; --turn:.95s;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{
+  background:#050403;
+  color:var(--paper);
+  font-family:var(--f-body);
+  overflow:hidden;
+  display:flex; flex-direction:column;
+}
+#matrix{position:fixed; inset:0; width:100%; height:100%; z-index:0; pointer-events:none; display:block}
+.vignette{position:fixed; inset:0; z-index:0; pointer-events:none; background:radial-gradient(ellipse 55% 60% at 50% 50%, rgba(5,4,3,.82), rgba(5,4,3,.35) 70%, rgba(5,4,3,.1))}
+.banner,.stage,.controls{position:relative; z-index:1}
+.banner{
+  flex:none; text-align:center; font:500 12px/1.4 var(--f-mono); letter-spacing:.02em;
+  color:#e8c88f; background:#1f0809; border-bottom:1px solid rgba(201,162,90,.25);
+  padding-block:8px; padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px));
+}
+.banner b{color:var(--gold);letter-spacing:.12em;margin-right:.4em}
+.stage{flex:1; min-height:0; overflow:hidden; display:flex; align-items:center; justify-content:center; position:relative;
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); padding-block:18px 8px}
+.clip{position:relative; max-width:100%}
+.single .clip{overflow:hidden; width:var(--pw); height:calc(var(--ph) + 60px); padding-top:0}
+.book{position:relative; width:calc(var(--pw)*2); height:var(--ph); perspective:2600px;
+  transition:transform var(--turn) cubic-bezier(.6,.05,.3,1); font-size:var(--fs)}
+.single .book{width:var(--pw); perspective:1800px}
+.book::before{ /* shadow on the desk */
+  content:""; position:absolute; inset:2% 3% -3%; background:rgba(0,0,0,.6); filter:blur(22px); border-radius:6px; z-index:-1;
+  transition:left var(--turn), right var(--turn)}
+.book.closed-front::before{left:52%}
+.book.closed-back::before{right:52%}
+.single .book::before{left:3%!important;right:3%!important}
+.ribbon{position:absolute; left:calc(50% - 7px); top:calc(100% - 12px); width:14px; height:56px; z-index:0;
+  background:linear-gradient(90deg,#6d0b10,var(--blood-hi) 45%,#6d0b10);
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%); box-shadow:0 2px 6px rgba(0,0,0,.5)}
+.single .ribbon{left:18px}
+
+.leaf{position:absolute; top:0; left:var(--pw); width:var(--pw); height:100%;
+  transform-origin:left center; transform-style:preserve-3d;
+  transition:transform var(--turn) cubic-bezier(.6,.05,.3,1)}
+.single .leaf{left:0}
+.leaf.flipped{transform:rotateY(-180deg)}
+.leaf.gone{visibility:hidden}
+.face{position:absolute; inset:0; backface-visibility:hidden; -webkit-backface-visibility:hidden; overflow:hidden}
+.face.back{transform:rotateY(180deg)}
+.face::after{content:""; position:absolute; inset:0; pointer-events:none; opacity:0; transition:opacity calc(var(--turn)/2);
+  background:linear-gradient(90deg,rgba(0,0,0,.28),rgba(0,0,0,0) 60%)}
+.leaf.turning .face::after{opacity:1}
+
+/* paper */
+.paper{background:
+   radial-gradient(ellipse at 50% 50%, var(--paper) 55%, var(--paper-2) 100%);
+  color:var(--ink); box-shadow:inset 0 0 0 1px rgba(120,90,50,.25)}
+.paper.r{border-radius:0 3px 3px 0}
+.paper.l{border-radius:3px 0 0 3px}
+.paper.r::before,.paper.l::before{content:""; position:absolute; top:0; bottom:0; width:14%; pointer-events:none}
+.paper.r::before{left:0; background:linear-gradient(90deg,rgba(60,40,20,.32),rgba(60,40,20,.08) 35%,transparent)}
+.paper.l::before{right:0; background:linear-gradient(270deg,rgba(60,40,20,.32),rgba(60,40,20,.08) 35%,transparent)}
+.single .paper.r::before{width:7%}
+.edge-r{box-shadow:inset 0 0 0 1px rgba(120,90,50,.25), 3px 0 0 -1px var(--paper-edge), 5px 1px 0 -2px #a88a58}
+.edge-l{box-shadow:inset 0 0 0 1px rgba(120,90,50,.25), -3px 0 0 -1px var(--paper-edge), -5px 1px 0 -2px #a88a58}
+
+.pg{position:absolute; inset:0; display:flex; flex-direction:column; padding:9% 11% 0 12%}
+.paper.l .pg{padding:9% 12% 0 11%}
+.pg-in{flex:1; min-height:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; display:flex; flex-direction:column; gap:.7em}
+.pg-in::-webkit-scrollbar{display:none}
+.folio{flex:none; display:flex; justify-content:space-between; align-items:center; gap:1em; padding-block:.9em 6.5%;
+  font:400 .62em/1 var(--f-mono); color:var(--ink-soft); letter-spacing:.02em}
+.folio .no{font:1.6em/1 var(--f-italic); color:var(--ink)}
+.folio .hash{opacity:.75; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.paper.l .folio{flex-direction:row-reverse}
+
+.eyebrow{font:500 .6em/1.3 var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:var(--blood)}
+h1,h2{font-family:var(--f-display); font-weight:400; margin:0; text-wrap:balance; color:var(--ink); line-height:1.05}
+h2{font-size:1.75em}
+h1{font-size:2.6em; line-height:1}
+p{margin:0; line-height:1.42; font-size:1em; hyphens:auto}
+.lede{font:italic 1.08em/1.38 var(--f-italic); color:var(--ink-soft)}
+.drop::first-letter{font-family:var(--f-display); float:left; font-size:3.4em; line-height:.86; padding:.04em .08em 0 0; color:var(--blood)}
+.orn{display:flex; align-items:center; gap:.6em; color:var(--blood); margin-block:.2em}
+.orn::before,.orn::after{content:""; flex:1; height:1px; background:var(--rule)}
+.orn svg{width:.8em; height:1.1em; flex:none}
+.small{font-size:.82em; color:var(--ink-soft)}
+.mono{font-family:var(--f-mono); font-size:.72em; letter-spacing:.01em}
+a{color:var(--blood)}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(--ember); outline-offset:2px}
+
+.btns{display:flex; flex-wrap:wrap; gap:.6em; margin-top:.3em}
+.btn{font:600 .82em/1 var(--f-body); letter-spacing:.06em; text-transform:uppercase; text-decoration:none; cursor:pointer;
+  padding:.85em 1.1em; border:1px solid var(--blood); color:var(--paper); background:var(--blood); border-radius:2px}
+.btn.ghost{background:transparent; color:var(--blood)}
+.btn:hover{background:var(--blood-hi); border-color:var(--blood-hi); color:var(--paper)}
+
+/* title page */
+.title-pg .pg-in{justify-content:center; text-align:center; align-items:center; gap:.9em}
+.title-pg .btns{justify-content:center}
+.imprint{font:italic .8em/1.4 var(--f-italic); color:var(--ink-soft)}
+
+/* contents */
+.toc{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.42em}
+.toc button{all:unset; cursor:pointer; display:flex; align-items:baseline; gap:.4em; width:100%; font-size:1.02em}
+.toc button:hover .t{color:var(--blood)}
+.toc .t{font-family:var(--f-italic)}
+.toc .dots{flex:1; border-bottom:1px dotted var(--ink-soft); transform:translateY(-.25em)}
+.toc .n{font-family:var(--f-italic); font-variant-numeric:tabular-nums}
+.exlibris{margin-top:auto; border:1px solid var(--rule); padding:.7em; text-align:center; display:flex; flex-direction:column; gap:.3em}
+.exlibris .k{font:1.05em var(--f-display); letter-spacing:.08em}
+
+/* steps */
+.steps{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:.75em}
+.steps li{display:grid; grid-template-columns:1.6em 1fr; gap:.2em .5em; font-size:.93em}
+.steps .r{font:italic 1.25em/1.1 var(--f-italic); color:var(--blood)}
+.steps b{font-weight:600}
+.steps .tag{grid-column:2; font:.68em var(--f-mono); color:var(--ink-soft)}
+
+/* ledger */
+.ledger{width:100%; border-collapse:collapse; font-size:.86em; font-variant-numeric:tabular-nums}
+.ledger th{font:500 .66em var(--f-mono); letter-spacing:.1em; text-transform:uppercase; color:var(--ink-soft); text-align:left; padding-bottom:.4em; border-bottom:1px solid var(--ink)}
+.ledger td{padding:.42em 0; border-bottom:1px solid var(--rule); font-family:var(--f-italic)}
+.ledger td:last-child{font-family:var(--f-mono); font-size:.72em; color:var(--ink-soft); text-align:right}
+.ledger tr.now td{color:var(--blood)}
+.bloodline{height:2px; background:linear-gradient(90deg,var(--blood),var(--blood-hi)); width:var(--len,60%); border-radius:2px; position:relative}
+.bloodline::after{content:""; position:absolute; right:-3px; top:-3px; width:8px; height:8px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); background:var(--blood-hi)}
+
+/* refs */
+.refs{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:.55em; font-size:.93em}
+.refs li{display:grid; grid-template-columns:1.4em 1fr; gap:.4em}
+.refs sup{font:italic 1em var(--f-italic); color:var(--blood)}
+.refs .u{display:block; font:.66em var(--f-mono); color:var(--ink-soft); word-break:break-all}
+
+.facts{display:grid; grid-template-columns:auto 1fr; gap:.25em 1em; font-size:.84em; margin:0}
+.facts dt{font:italic 1em var(--f-italic); color:var(--ink-soft)}
+.facts dd{margin:0}
+.stamp{align-self:center; margin-top:auto; margin-bottom:.5em; transform:rotate(-4deg); border:2px solid var(--blood); color:var(--blood); padding:.4em .8em; text-align:center;
+  font:500 .58em/1.4 var(--f-mono); letter-spacing:.07em; text-transform:uppercase; opacity:.85; max-width:92%}
+.stamp b{display:block; font:1.6em/1.1 var(--f-display); letter-spacing:.1em}
+
+/* form */
+form{display:flex; flex-direction:column; gap:.55em}
+label{font:500 .62em var(--f-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft)}
+input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,255,255,.35); border:none; border-bottom:1px solid var(--ink); padding:.5em .2em; border-radius:0; width:100%; color-scheme:light}
+.check{display:flex; gap:.5em; align-items:flex-start; font:.8em/1.35 var(--f-body); text-transform:none; letter-spacing:0; color:var(--ink-soft)}
+.check input{margin-top:.2em; accent-color:var(--blood)}
+.msg{font:italic .9em var(--f-italic); color:var(--blood); min-height:1.3em}
+
+/* plate */
+.plate{background:radial-gradient(ellipse at 50% 50%, var(--paper) 55%, var(--paper-2) 100%); color:var(--ink); border-radius:0 3px 3px 0}
+.plate::before{content:""; position:absolute; top:0; bottom:0; left:0; width:14%; pointer-events:none; z-index:1; background:linear-gradient(90deg,rgba(60,40,20,.32),rgba(60,40,20,.08) 35%,transparent)}
+.plate .pg{padding:8% 9% 0 11%}
+.plate .frame{flex:1; min-height:0; display:flex; align-items:center; justify-content:center}
+.plate img{max-width:100%; max-height:100%; object-fit:contain; display:block;
+  --fade:linear-gradient(90deg,transparent,#000 4%,#000 96%,transparent),linear-gradient(transparent,#000 4%,#000 97%,transparent);
+  -webkit-mask-image:var(--fade); -webkit-mask-composite:source-in; mask-image:var(--fade); mask-composite:intersect}
+.plate .cap{text-align:center; padding-block:.6em 7%; font:italic .82em/1.35 var(--f-italic); color:var(--ink-soft)}
+.plate .cap span{display:block; font:.62em var(--f-mono); letter-spacing:.12em; text-transform:uppercase; color:var(--blood); font-style:normal}
+
+/* leather covers: pre-rendered wine-red leather with pressed gold tooling (cover.jpg / back.jpg); live text sits on top */
+.cover{background:#5a0c18; color:var(--gold)}
+.cover .skin{position:absolute; inset:0; width:100%; height:100%; object-fit:fill; display:block; pointer-events:none}
+.cover.r{border-radius:2px 8px 8px 2px; box-shadow:inset 0 0 0 1px rgba(0,0,0,.35)}
+.cover.l{border-radius:8px 2px 2px 8px; box-shadow:inset -6px 0 10px rgba(0,0,0,.55)}
+.cover .front-txt{position:absolute; left:0; right:0; bottom:17%; text-align:center}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap}
+.tooling{position:absolute; inset:14% 12%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.1em; text-align:center}
+.gilt{color:#e2c07a; text-shadow:0 -1px 0 rgba(28,0,5,.9), 0 1px 0 rgba(255,196,180,.18)}
+.cover .vol{font:500 .66em var(--f-mono); letter-spacing:.3em; text-transform:uppercase; color:#d8b26a}
+.cover .sub{font:italic 1.1em var(--f-italic); color:#e2c07a}
+.cover .vol{font:.66em var(--f-mono); letter-spacing:.28em; text-transform:uppercase; color:rgba(201,162,90,.8)}
+.cover .open{font:.62em var(--f-mono); letter-spacing:.14em; text-transform:uppercase; color:rgba(226,192,122,.75); animation:pulse 2.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.35}}
+.sig{width:46%; opacity:.9}
+.fw .pg-in{gap:.6em} .fw p{font-size:.93em; line-height:1.4; text-align:justify}
+.motto{margin:0 0 .2em; align-self:flex-end; text-align:right; font-family:var(--f-italic); font-style:italic; font-size:.92em; opacity:.85} .motto span{display:block; font-family:var(--f-body); font-style:normal; font-size:.72em; letter-spacing:.08em; text-transform:uppercase; opacity:.7}
+.fw-sig{margin-top:auto; align-self:flex-end; display:flex; flex-direction:column; align-items:center; gap:.1em}
+.sig-ink{width:9em; filter:brightness(0) saturate(100%) invert(12%) sepia(30%) saturate(900%) hue-rotate(320deg); opacity:.85}
+
+.marble{background:
+   radial-gradient(ellipse 40% 18% at 20% 30%, rgba(201,162,90,.25), transparent 70%),
+   radial-gradient(ellipse 30% 22% at 75% 65%, rgba(143,16,22,.55), transparent 70%),
+   radial-gradient(ellipse 50% 14% at 60% 15%, rgba(143,16,22,.4), transparent 70%),
+   radial-gradient(ellipse 35% 20% at 30% 85%, rgba(201,162,90,.18), transparent 70%),
+   repeating-linear-gradient(115deg, rgba(0,0,0,.18) 0 3px, transparent 3px 11px),
+   #2a1012}
+.blank{background:radial-gradient(ellipse at 50% 50%, var(--paper) 55%, var(--paper-2) 100%)}
+
+/* corner curl */
+.curl{position:absolute; right:0; bottom:0; width:2.6em; height:2.6em; pointer-events:none;
+  background:linear-gradient(315deg, transparent 50%, rgba(0,0,0,.12) 50%, var(--paper-2) 58%, #f3ead4 72%);
+  border-top-left-radius:6px; transition:width .25s, height .25s; box-shadow:-2px -2px 5px rgba(0,0,0,.12)}
+.leaf:not(.flipped):hover .curl{width:3.6em; height:3.6em}
+.cover .curl{display:none}
+
+.controls{flex:none; display:flex; align-items:center; justify-content:center; gap:14px; padding-block:6px 14px;
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px))}
+.nav{width:44px; height:44px; border-radius:50%; border:1px solid rgba(201,162,90,.45); background:rgba(12,9,6,.8); color:var(--gold); cursor:pointer; font:20px/1 var(--f-body); display:grid; place-items:center}
+.nav:hover:not(:disabled){background:rgba(143,16,22,.35)}
+.nav:disabled{opacity:.3; cursor:default}
+.where{min-width:0; text-align:center; display:flex; flex-direction:column; gap:3px}
+.where .c{font:italic 16px/1.2 var(--f-italic); color:#e6d3a8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:56vw}
+.where .h{font:11px/1.2 var(--f-mono); color:rgba(201,162,90,.7); letter-spacing:.04em}
+@media (prefers-reduced-motion: reduce){:root{--turn:0s} .cover .open{animation:none}}
+
+/* side columns (desktop >=1100px) in ledger style; ticker line on smaller screens */
+.side{position:fixed;top:56px;bottom:16px;width:210px;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:18px;color:#eadfc4;font-family:var(--f-body);font-size:13px;line-height:1.32}
+.side.l{left:max(16px,calc(50% - var(--pw) - 236px))}.side.r{right:max(16px,calc(50% - var(--pw) - 236px))}
+.side section{background:rgba(8,5,4,.82);border-top:1px solid rgba(201,162,90,.6);border-bottom:1px solid rgba(201,162,90,.6);padding:10px 14px}
+.side .lbl{font:500 10px var(--f-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+.side b.big{display:block;font:500 19px var(--f-body);color:#f3e6c6;margin:.2em 0 .1em;font-variant-numeric:lining-nums}
+.side i{display:block;opacity:.85}.side a{color:var(--gold)}
+.side .ev{padding-top:.55em;margin-top:.55em;border-top:1px dotted rgba(201,162,90,.3)}
+.side .ev span{display:block;font:10.5px var(--f-mono);color:var(--gold);opacity:.8}.side .ev b{display:block;font-weight:500}.side .ev i{font-size:12px}
+.ticker{display:none;flex:none;overflow:hidden;white-space:nowrap;height:24px;line-height:24px;background:#0b0605;border-bottom:1px solid rgba(201,162,90,.3);font:12px var(--f-mono);color:#e8d9b4;position:relative;z-index:2}
+.ticker .run{display:inline-block;padding-left:100%;animation:tick 38s linear infinite}
+.ticker em{font-style:normal;color:var(--gold);letter-spacing:.12em;margin-right:.5em}.ticker .sep{color:var(--blood-hi);margin:0 1.1em}
+@keyframes tick{to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.ticker{overflow-x:auto}.ticker .run{animation:none;padding-left:16px}}
+@media (max-width:1099px){.side{display:none}.ticker{display:block}}
+
+.pg-title{position:absolute;left:0;right:0;z-index:4;top:calc(50% - var(--ph) / 2 - 34px);text-align:center;padding:0 16px;font:italic 19px/1.2 var(--f-italic);color:#e6d3a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* desktop: arrows sit left and right of the book */
+.single .pg-title{top:calc(50% - var(--ph) / 2 - 66px)}
+.stage>.nav{position:absolute;top:50%;transform:translateY(-50%);z-index:5}
+.stage>#prev{left:calc(50% - var(--pw) - 60px)}.stage>#next{right:calc(50% - var(--pw) - 60px)}
+.side.l{left:max(16px,calc(50% - var(--pw) - 290px))}.side.r{right:max(16px,calc(50% - var(--pw) - 290px))}
+</style>
+</head>
+<body>
+<noscript><style>.stage,.controls{display:none}</style><div style="max-width:40em;margin:2em auto;padding:0 16px;color:#eadfc4;font-family:Georgia,serif"><h1>The chain remembers.</h1><p>Every week, death leaves a mark on the chain. Bloodcoin writes it down, forever. This book needs JavaScript to turn its pages. The record itself is on the <a style="color:#c9a25a" href="/oracle">check page</a>.</p></div></noscript>
+<link rel="stylesheet" href="/assets/book/fonts.css">
+
+
+<canvas id="matrix" aria-hidden="true"></canvas><div class="vignette" aria-hidden="true"></div>
+<div class="banner" role="note"><b>IN DEVELOPMENT</b>Bloodcoin is still in development. BCUS is not yet available for purchase.</div>
+<div class="ticker" aria-label="Live record"><span class="run"><em>LATEST REPORT</em>222,277 deaths in four weeks to 2026-08-22 · factor 1.000<span class="sep">◆</span><em>NEXT EMISSION</em>in 1 d 2 h · Oct 25, 15:18 UTC<span class="sep">◆</span><em>MINING</em>0 solutions<span class="sep">◆</span><em>CHAIN</em>Block 34,182 · every 26 s<span class="sep">◆</span><em>LOG</em>Oct 25 first weekly emission (test network)</span></div>
+
+<main class="stage" id="stage" aria-label="Bloodcoin, a book in eight leaves">
+<div class="pg-title" aria-live="polite"><span id="where">Bloodcoin</span></div>
+  <div class="clip"><div class="book" id="book"><div class="ribbon" aria-hidden="true"></div></div></div>
+</main>
+
+<nav class="controls" aria-label="Turn pages">
+  <button class="nav" id="prev" aria-label="Previous page">&#8249;</button>
+  <div class="where"><span class="h" id="hint">Tap the page, swipe or use the arrow keys</span></div>
+  <button class="nav" id="next" aria-label="Next page">&#8250;</button>
+</nav>
+
+<!-- Pages in reading order. data-kind: cover | marble | plate | paper -->
+<template id="pages">
+  <section data-kind="cover" data-label="Bloodcoin" data-id="cover">
+    <img class="skin" src="/assets/book/cover.jpg" alt="">
+    <h1 class="sr">Bloodcoin. Vol. I, MMXXVI. The chain remembers.</h1>
+    <div class="front-txt"><div class="open gilt">Open the book &rsaquo;</div></div>
+  </section>
+
+  <section data-kind="paper" data-label="Contents" data-id="contents">
+    <p class="motto">&ldquo;The chain does not forget.&rdquo;<span>Michel Wagner</span></p>
+    <div class="eyebrow">Contents</div>
+    <h2>Memento mori, written in blocks.</h2>
+    <ol class="toc">
+      <li><button data-go="title"><span class="t">The chain remembers</span><span class="dots"></span><span class="n">II</span></button></li>
+      <li><button data-go="idea"><span class="t">I. The idea</span><span class="dots"></span><span class="n">III</span></button></li>
+      <li><button data-go="how"><span class="t">II. How it works</span><span class="dots"></span><span class="n">IV</span></button></li>
+      <li><button data-go="register"><span class="t">III. The register</span><span class="dots"></span><span class="n">V</span></button></li>
+      <li><button data-go="witness"><span class="t">IV. Witness it</span><span class="dots"></span><span class="n">VI</span></button></li>
+      <li><button data-go="trace"><span class="t">V. The trace</span><span class="dots"></span><span class="n">VII</span></button></li>
+      <li><button data-go="letters"><span class="t">VI. Letters</span><span class="dots"></span><span class="n">VIII</span></button></li>
+      <li><button data-go="foreword"><span class="t">Afterword: The Register of Silence</span><span class="dots"></span><span class="n">IX</span></button></li>
+      <li><button data-go="colophon"><span class="t">Colophon</span><span class="dots"></span><span class="n">XI</span></button></li>
+    </ol>
+    <div class="exlibris">
+      <span class="mono">EX LIBRIS</span>
+      <span class="k">The Register of the Dead</span>
+      <span class="small">Kept on Base. Opened every Monday.</span>
+    </div>
+  </section>
+
+  <section data-kind="paper" data-label="The chain remembers" data-id="title" class="title-pg">
+    <div class="eyebrow">A living memento mori</div>
+    <h1>The chain remembers.</h1>
+    <div class="orn" style="width:70%"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M5 0C5 0 0 6.5 0 9a5 5 0 0 0 10 0C10 6.5 5 0 5 0z" fill="currentColor"/></svg></div>
+    <p class="lede">Every week, death leaves a mark on the chain. Bloodcoin writes it down, forever.</p>
+    <div class="btns">
+      <a class="btn" href="https://bloodcoin-us.com/oracle" target="_blank" rel="noopener">See this week's record</a>
+      <button class="btn ghost" data-go="idea">Read the idea</button>
+    </div>
+    <p class="imprint">Recorded every Monday, 12:00 UTC.<br>Written to the Base blockchain.</p>
+  </section>
+
+  <section data-kind="paper" data-label="I. The idea" data-id="idea">
+    <div class="eyebrow">Chapter I</div>
+    <h2>The idea</h2>
+    <p class="drop">Bloodcoin is a living memento mori. Every Monday, an oracle takes the latest settled death counts for the United States, published by the CDC, and writes them onto the Base blockchain. Nobody can change or delete them afterwards.</p>
+    <p>BCUS is the trace of that record. New coins appear only when a new week is written, and the amount follows the record.</p>
+    <div class="orn"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M5 0C5 0 0 6.5 0 9a5 5 0 0 0 10 0C10 6.5 5 0 5 0z" fill="currentColor"/></svg></div>
+    <p class="lede" style="text-align:center">The coin is the pigment of the work, not a promise.</p>
+  </section>
+
+  <section data-kind="paper" data-label="II. How it works" data-id="how">
+    <div class="eyebrow">Chapter II</div>
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><span class="r">i.</span><span><b>Public data.</b> Weekly death counts from the US CDC. Only weeks at least eight weeks old are used, because recent figures are still revised.</span><span class="tag">source: data.cdc.gov</span></li>
+      <li><span class="r">ii.</span><span><b>A signed report.</b> Our server signs the numbers and sends them to the oracle contract.</span><span class="tag">ECDSA signature, checked on chain</span></li>
+      <li><span class="r">iii.</span><span><b>The record.</b> The contract stores them, visible to anyone on Basescan and on our check page.</span><span class="tag">append only, one entry per week</span></li>
+      <li><span class="r">iv.</span><span><b>The trace.</b> The emission contract releases new BCUS according to the record.</span><span class="tag">one release per recorded week</span></li>
+    </ol>
+  </section>
+
+  <section data-kind="paper" data-label="III. The register" data-id="register">
+    <div class="eyebrow">Chapter III</div>
+    <h2>The register</h2>
+    <p>Each Monday one line is added to this book. The line is written in a block, and a block cannot be torn out.</p>
+    <table class="ledger" aria-label="Weekly record">
+      <thead><tr><th>Week ending</th><th>Deaths, 4 weeks</th><th>Entry</th></tr></thead>
+      <tbody id="ledger"></tbody>
+    </table>
+    <div class="bloodline" style="--len:62%" aria-hidden="true"></div>
+    <p class="small">The red line grows by one stroke every week. Every entry in full: <a href="/oracle">the check page</a>.</p>
+  </section>
+
+  <section data-kind="paper" data-label="IV. Witness it" data-id="witness">
+    <div class="eyebrow">Chapter IV</div>
+    <h2>Witness it</h2>
+    <p class="drop">Every entry can be checked. Open the oracle page, compare it with the CDC numbers, and see the chain grow week by week.</p>
+    <div class="orn"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M5 0C5 0 0 6.5 0 9a5 5 0 0 0 10 0C10 6.5 5 0 5 0z" fill="currentColor"/></svg></div>
+    <ol class="refs">
+      <li><sup>1</sup><span><a href="https://bloodcoin-us.com/oracle" target="_blank" rel="noopener">The check page</a>. Every recorded week, next to the CDC source.<span class="u">bloodcoin-us.com/oracle</span></span></li>
+      <li><sup>2</sup><span><a href="https://github.com/Wagnermichel88/Bloodcoin" target="_blank" rel="noopener">The source code</a>. Contracts, oracle and report script, all public.<span class="u">github.com/Wagnermichel88/Bloodcoin</span></span></li>
+      <li><sup>3</sup><span><a href="https://node.bloodcoin-us.com" target="_blank" rel="noopener">The explorer</a>. Blocks and transactions of the Bloodcoin node.<span class="u">node.bloodcoin-us.com</span></span></li>
+    </ol>
+  </section>
+
+  <section data-kind="paper" data-label="V. The trace" data-id="trace">
+    <div class="eyebrow">Chapter V</div>
+    <h2>The trace</h2>
+    <p>BCUS is a token on Base. It grows only when a new week is written.</p>
+    <dl class="facts">
+      <dt>Name</dt><dd>Bloodcoin &middot; BCUS</dd>
+      <dt>Network</dt><dd>Base Sepolia (test network)</dd>
+      <dt>Source</dt><dd>US CDC, weekly deaths</dd>
+      <dt>Oracle</dt><dd>Signed report, every Monday</dd>
+      <dt>Code</dt><dd>Open source</dd>
+    </dl>
+    <div class="stamp"><b>Not for sale</b>Bloodcoin is still in development.<br>BCUS is not yet available for purchase.</div>
+  </section>
+
+  <section data-kind="paper" data-label="VI. Letters" data-id="letters">
+    <div class="eyebrow">Chapter VI</div>
+    <h2>Letters</h2>
+    <p>Leave your address and we write when a new chapter begins: the first entries, changes to the rules, the launch.</p>
+    <form id="newsletter" novalidate>
+      <label for="nl-email">Your email</label>
+      <input id="nl-email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+      <label class="check" for="nl-ok"><input id="nl-ok" type="checkbox" required> <span>I agree that Bloodcoin stores my email to send these letters. I can unsubscribe at any time. <a href="https://bloodcoin-us.com/legal.html#newsletter" target="_blank" rel="noopener">Privacy</a></span></label>
+      <div class="btns"><button class="btn" type="submit">Subscribe</button></div>
+      <div class="msg" id="nl-msg" role="status"></div>
+    </form>
+  </section>
+
+  <section data-kind="paper" data-label="The Register of Silence" data-id="foreword" class="fw">
+    <div class="eyebrow">Afterword</div>
+    <h2>The Register of Silence</h2>
+    <p class="drop">We have learned to disinfect death out of sight. We have banished it behind the sterile glass of intensive care units, wrapped it in unreadable official reports and made it vanish in the endless data streams of our glossy world. Our age celebrates the eternal: eternal youth, endless economic growth, the immortal algorithm. Yet while we race ahead in a digital frenzy, the most basic truth of our existence is left behind: our own finitude.</p>
+    <p>Bloodcoin is my attempt to give form to what we push away. It is not a promise of future wealth, not a product for the quick speculative market, and not greed that loses itself in artificial frenzies of numbers. It is a living memento mori, engraved into the incorruptible architecture of the blockchain.</p>
+  </section>
+
+  <section data-kind="paper" data-label="The Register of Silence" data-id="foreword-2" class="fw">
+    <p>Every Monday the code looks at the real, unrelenting numbers of life and death. It draws a line. It burns the bare statistics of mortality indelibly into the blocks. What society would rather suppress and smooth over becomes a lasting digital monument here. The coin, BCUS, is no more than the pigment of this performance. It is not born of computing power alone, but of the heartbeat of time itself. Whoever holds it, stakes it or follows its path becomes not merely a player in a financial logic, but a witness to an uncomfortable truth.</p>
+    <p>I did not create this system to serve the market, but to disturb it. In a world that tokenizes everything and makes everything tradable, Bloodcoin makes the inevitable visible: the chain does not forget. And the rhythm of transience beats on, block by block.</p>
+    <div class="fw-sig"><img class="sig-ink" src="/assets/book/signature.png" alt="Signature: Wagner"><span class="small">Michel Wagner</span></div>
+  </section>
+
+  <section data-kind="paper" data-label="Colophon" data-spread-only="1"></section>
+
+  <section data-kind="paper" data-label="Colophon" data-id="colophon">
+    <div class="eyebrow">Colophon</div>
+    <h2>About this book</h2>
+    <p>Conceived and kept by Michel Wagner, artist, Switzerland. Set in IM Fell English and EB Garamond. Printed on the Base blockchain, one page a week.</p>
+    <div class="orn"><svg viewBox="0 0 10 14" aria-hidden="true"><path d="M5 0C5 0 0 6.5 0 9a5 5 0 0 0 10 0C10 6.5 5 0 5 0z" fill="currentColor"/></svg></div>
+    <p class="small">Contact: <span class="mono" style="font-size:.95em;user-select:all">contact@bloodcoin-us.com</span></p>
+    <p class="small"><a href="https://bloodcoin-us.com/legal.html" target="_blank" rel="noopener">Legal notice and privacy</a></p>
+    <p class="small">Bloodcoin is an art project. Nothing in this book is investment advice. BCUS is not offered to persons in the United States.</p>
+  </section>
+
+  <section data-kind="paper" data-label="Plate I" data-spread-only="1"></section>
+
+  <section data-kind="plate" data-label="Plate I">
+    <div class="frame"><img src="/assets/book/plate-1.jpg" alt="Engraving: two skeletons hold hands beneath a ring of vertebrae while a single drop of blood falls between them"></div>
+    <div class="cap"><span>Plate I</span>The Lovers. Michel Wagner, 2026.</div>
+  </section>
+
+  <section data-kind="cover" data-label="The end" data-id="end">
+    <img class="skin" src="/assets/book/back.jpg" alt="">
+    <div class="tooling">
+      <div class="vol gilt">Finis</div>
+      <div class="sub gilt">Every week, death leaves a mark.<br>From now on, it leaves one on the chain.</div>
+      <img class="sig" src="/assets/book/signature.png" alt="Signature: Wagner">
+      <div class="vol gilt">bloodcoin-us.com</div>
+    </div>
+  </section>
+</template>
+
+<script>
+// Golden code rain behind the book: slow, dim, paused when hidden, a still frame with reduced motion.
+(() => {
+  const c = document.getElementById('matrix'), x = c.getContext('2d');
+  const chars = '0123456789ABCDEF\u2020\u2021BLD\u25C6\u00A7\u2234';
+  const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w, h, fs, cols, drops, last = 0;
+  function size() {
+    const r = Math.min(devicePixelRatio || 1, 2);
+    w = innerWidth; h = innerHeight; c.width = w * r; c.height = h * r; x.setTransform(r, 0, 0, r, 0, 0);
+    fs = w < 600 ? 13 : 16; cols = Math.ceil(w / fs);
+    drops = Array.from({ length: cols }, () => ({ y: Math.random() * -h / fs, v: .25 + Math.random() * .55 }));
+    x.fillStyle = '#050403'; x.fillRect(0, 0, w, h);
+    if (still) for (let i = 0; i < 40; i++) frame(true);
+  }
+  function frame(force) {
+    x.fillStyle = 'rgba(5,4,3,.09)'; x.fillRect(0, 0, w, h);
+    x.font = fs + 'px "JetBrains Mono", monospace';
+    for (let i = 0; i < cols; i++) {
+      const d = drops[i], ch = chars[Math.random() * chars.length | 0], py = d.y * fs;
+      x.fillStyle = Math.random() < .04 ? '#c0222a' : 'rgba(255,226,150,.85)';
+      x.fillText(ch, i * fs, py);
+      x.fillStyle = 'rgba(201,162,90,.35)';
+      x.fillText(chars[Math.random() * chars.length | 0], i * fs, py - fs);
+      d.y += d.v;
+      if (py > h && Math.random() > .975) { d.y = -Math.random() * 20; d.v = .25 + Math.random() * .55; }
+    }
+  }
+  function loop(t) { if (t - last > 50) { frame(); last = t; } requestAnimationFrame(loop); }
+  size(); addEventListener('resize', size);
+  if (!still) requestAnimationFrame(loop);
+})();
+</script>
+<script>
+(() => {
+  // The register reads the same signed reports as the check page (/oracle).
+  const ORACLE_DATA = '/oracle-data/index.json';
+  const TX_URL = 'https://sepolia.basescan.org/tx/';
+  let reports = null;
+  const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  fetch(ORACLE_DATA, { cache: 'no-store' }).then(r => r.ok ? r.json() : []).catch(() => [])
+    .then(items => { reports = Array.isArray(items) ? items : []; fillLedger(); for (const k in hashes) delete hashes[k]; paintHashes(); });
+  function fillLedger() {
+    const body = book.querySelector('#ledger'); if (!body) return;
+    const line = book.querySelector('.bloodline');
+    if (!reports || !reports.length) {
+      body.innerHTML = `<tr class="now"><td colspan="3">${reports ? 'The first entry is written on the next Monday.' : 'Reading the register…'}</td></tr>`;
+      if (line) line.style.setProperty('--len', '8%');
+      return;
+    }
+    const rows = [...reports].sort((a, b) => String(b.week_ending).localeCompare(String(a.week_ending))).slice(0, 4);
+    body.innerHTML = rows.map((r, i) => `<tr${i === 0 ? ' class="now"' : ''}><td>${esc(r.week_ending)}</td><td>${Number(r.recent_deaths).toLocaleString('en-US')}</td><td>${r.tx ? `<a href="${TX_URL}${encodeURIComponent(r.tx)}" target="_blank" rel="noopener">${esc(String(r.tx).slice(0, 8))}…</a>` : 'not sent'}</td></tr>`).join('');
+    if (line) line.style.setProperty('--len', Math.min(100, 6 + reports.length * 4) + '%');
+  }
+  const ROMAN = ['','I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+  const tpl = document.getElementById('pages');
+  // spread-only pages are blank versos that keep the plate alone on the last spread; phones skip them
+  let fol = 0;
+  const ALL = [...tpl.content.children].map((s, i) => {
+    const only = !!s.dataset.spreadOnly;
+    return { kind: s.dataset.kind, label: s.dataset.label, id: s.dataset.id || null,
+      cls: s.className, html: s.innerHTML, idx: i, only, fol: only || !i ? 0 : ++fol };
+  });
+  let PAGES = ALL, N = ALL.length;
+  const book = document.getElementById('book');
+  const stage = document.getElementById('stage');
+  const whereEl = document.getElementById('where');
+  const hintEl = document.getElementById('hint');
+  const prevBtn = document.getElementById('prev');
+  const nextBtn = document.getElementById('next');
+  let mode = null, leaves = [], cur = 0, busy = 0;
+  const hashes = {};
+
+  function pageFace(p, side, extraCls) {
+    const f = document.createElement('div');
+    if (!p) { f.className = 'face blank paper ' + side; return f; }
+    const sideCls = side === 'l' ? 'l' : 'r';
+    f.className = 'face ' + (p.kind === 'cover' ? 'cover' : p.kind === 'marble' ? 'marble' : p.kind === 'plate' ? 'plate' : 'paper') + ' ' + sideCls + ' ' + (p.cls || '') + ' ' + (extraCls || '');
+    f.dataset.page = p.idx;
+    if (p.kind === 'cover' || p.kind === 'marble') { f.innerHTML = p.html; return f; }
+    if (p.only) { f.className += ' blank'; return f; }
+    const num = p.fol; // first paper page = I
+    const pg = document.createElement('div'); pg.className = 'pg';
+    if (p.kind === 'plate') { pg.innerHTML = p.html; f.appendChild(pg); return f; }
+    pg.innerHTML = `<div class="pg-in">${p.html}</div><footer class="folio"><span class="no">${ROMAN[num] || ''}</span><span class="hash" data-hash="${p.idx}" title="SHA-256 of this page's text">sha256 · computing</span></footer>`;
+    f.appendChild(pg);
+    if (sideCls === 'r') { const c = document.createElement('div'); c.className = 'curl'; f.appendChild(c); }
+    return f;
+  }
+
+  function placeNav() {
+    const box = mode === 'spread' ? stage : document.querySelector('.controls');
+    box.prepend(prevBtn); box.append(nextBtn);
+  }
+  function build(newMode) {
+    // remember which page is in view
+    const seen = mode ? PAGES[visiblePage()] : null;
+    mode = newMode;
+    PAGES = mode === 'spread' ? ALL : ALL.filter(p => !p.only); N = PAGES.length;
+    let page = seen ? PAGES.indexOf(seen) : 0;
+    if (page < 0) page = PAGES.findIndex(p => p.idx > seen.idx);
+    document.body.classList.toggle('single', mode === 'single');
+    leaves.forEach(l => l.remove());
+    leaves = [];
+    const pairs = [];
+    if (mode === 'spread') for (let i = 0; i < N; i += 2) pairs.push([PAGES[i], PAGES[i + 1]]);
+    else PAGES.forEach(p => pairs.push([p, null]));
+    pairs.forEach(([front, back], i) => {
+      const leaf = document.createElement('div'); leaf.className = 'leaf';
+      leaf.appendChild(pageFace(front, 'r'));
+      const b = back ? pageFace(back, 'l') : pageFace(front && front.kind === 'cover' ? {kind:'cover',html:'',idx:-1} : null, 'l');
+      b.classList.add('back'); leaf.appendChild(b);
+      book.appendChild(leaf); leaves.push(leaf);
+    });
+    cur = mode === 'spread' ? Math.ceil(page / 2) : page;
+    book.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); goTo(b.dataset.go); }));
+    const form = book.querySelector('#newsletter'); if (form) form.addEventListener('submit', onSubmit);
+    placeNav();
+    fillLedger();
+    paintHashes();
+    layout(true);
+  }
+
+  function visiblePage() {
+    if (mode === 'single') return cur;
+    return Math.min(2 * cur, N - 1);
+  }
+
+  function layout(instant) {
+    leaves.forEach((leaf, j) => {
+      if (instant) leaf.style.transition = 'none';
+      const f = j < cur;
+      leaf.classList.toggle('flipped', f);
+      leaf.classList.toggle('gone', mode === 'single' && f);
+      leaf.style.zIndex = f ? j + 1 : leaves.length - j + 1;
+      leaf.inert = mode === 'spread' ? !(j === cur || j === cur - 1) : j !== cur;
+      if (instant) { leaf.offsetWidth; leaf.style.transition = ''; }
+    });
+    // keep a closed book centered on the desk
+    if (instant) book.style.transition = 'none';
+    let x = 0;
+    if (mode === 'spread') x = cur === 0 ? -0.5 : cur === leaves.length ? 0.5 : 0;
+    book.style.transform = `translateX(calc(var(--pw) * ${x}))`;
+    book.classList.toggle('closed-front', mode === 'spread' && cur === 0);
+    book.classList.toggle('closed-back', mode === 'spread' && cur === leaves.length);
+    if (instant) { book.offsetWidth; book.style.transition = ''; }
+    updateUi();
+  }
+
+  function updateUi() {
+    prevBtn.disabled = cur === 0;
+    nextBtn.disabled = cur === leaves.length - (mode === 'single' ? 1 : 0);
+    let label;
+    if (mode === 'spread') {
+      const r = PAGES[2 * cur], l = PAGES[2 * cur - 1];
+      label = (r && r.kind === 'paper') ? r.label : (l && l.kind === 'paper') ? l.label : (r ? r.label : l.label);
+    } else label = PAGES[cur].label;
+    whereEl.textContent = label;
+    const total = mode === 'spread' ? leaves.length + 1 : leaves.length;
+    hintEl.textContent = cur === 0 ? 'Tap the page, swipe or use the arrow keys' : `${mode === 'spread' ? 'Spread' : 'Page'} ${cur + 1} of ${total}`;
+  }
+
+  function turn(dir) {
+    const max = leaves.length - (mode === 'single' ? 1 : 0);
+    if (dir > 0 && cur >= max) return false;
+    if (dir < 0 && cur <= 0) return false;
+    const j = dir > 0 ? cur : cur - 1;
+    const leaf = leaves[j];
+    leaf.classList.remove('gone');
+    leaf.style.zIndex = 500 + (busy++);
+    leaf.classList.add('turning');
+    // force the un-hidden leaf to paint before it rotates
+    leaf.offsetWidth;
+    cur += dir;
+    leaf.classList.toggle('flipped', dir > 0);
+    const done = () => {
+      busy = Math.max(0, busy - 1);
+      leaf.classList.remove('turning');
+      if (!busy) layout(false);
+    };
+    const dur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--turn')) * 1000;
+    if (dur > 0) setTimeout(done, dur + 30); else done();
+    // book recentering and controls
+    let x = 0;
+    if (mode === 'spread') x = cur === 0 ? -0.5 : cur === leaves.length ? 0.5 : 0;
+    book.style.transform = `translateX(calc(var(--pw) * ${x}))`;
+    book.classList.toggle('closed-front', mode === 'spread' && cur === 0);
+    book.classList.toggle('closed-back', mode === 'spread' && cur === leaves.length);
+    updateUi();
+    return true;
+  }
+
+  function goTo(id) {
+    const p = PAGES.findIndex(q => q.id === id);
+    if (p < 0) return;
+    const target = mode === 'spread' ? Math.ceil(p / 2) : p;
+    const dir = Math.sign(target - cur);
+    let steps = Math.abs(target - cur), k = 0;
+    const tick = () => { if (k++ < steps) { turn(dir); setTimeout(tick, 140); } };
+    tick();
+  }
+
+  // input
+  prevBtn.addEventListener('click', () => turn(-1));
+  nextBtn.addEventListener('click', () => turn(1));
+  const interactive = t => t.closest('a,button,input,label,form,select,textarea');
+  book.addEventListener('click', e => {
+    if (interactive(e.target) || moved) return;
+    const face = e.target.closest('.face'); if (!face) return;
+    if (mode === 'single') { turn(1); return; }
+    turn(face.classList.contains('back') ? -1 : 1);
+  });
+  let sx = 0, sy = 0, moved = false;
+  stage.addEventListener('pointerdown', e => { sx = e.clientX; sy = e.clientY; moved = false; });
+  stage.addEventListener('pointerup', e => {
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy) * 1.3 && !e.target.closest('input')) { moved = true; turn(dx < 0 ? 1 : -1); setTimeout(() => moved = false, 50); }
+  });
+  document.addEventListener('keydown', e => {
+    if (e.target.closest && e.target.closest('input,textarea')) return;
+    if (e.key === 'ArrowRight' || e.key === 'PageDown') { e.preventDefault(); turn(1); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); turn(-1); }
+  });
+
+  function onSubmit(e) {
+    e.preventDefault();
+    const f = e.currentTarget, msg = f.querySelector('#nl-msg');
+    const email = f.querySelector('#nl-email'), ok = f.querySelector('#nl-ok');
+    if (!email.value || !email.checkValidity()) { msg.textContent = 'Please enter a valid email address.'; email.focus(); return; }
+    if (!ok.checked) { msg.textContent = 'Please confirm that we may store your email.'; return; }
+    const btn = f.querySelector('button[type=submit]'); btn.disabled = true; msg.textContent = 'Sending…';
+    fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: email.value.trim() }) })
+      .then(r => { if (!r.ok) throw new Error(r.status); msg.textContent = 'Thank you. Your address is on the list.'; f.reset(); })
+      .catch(() => { msg.textContent = 'Your address could not be saved. Please try again later.'; })
+      .finally(() => { btn.disabled = false; });
+  }
+
+  async function paintHashes() {
+    if (!(window.crypto && crypto.subtle)) { book.querySelectorAll('.hash').forEach(h => h.textContent = ''); return; }
+    for (const el of book.querySelectorAll('.hash')) {
+      const i = el.dataset.hash;
+      if (!hashes[i]) {
+        const txt = el.closest('.pg').querySelector('.pg-in').textContent.replace(/\s+/g, ' ').trim();
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(txt));
+        hashes[i] = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
+      }
+      el.textContent = 'sha256 ' + hashes[i].slice(0, 8) + '…' + hashes[i].slice(-6);
+    }
+  }
+
+  function size() {
+    const W = document.documentElement.clientWidth, H = document.documentElement.clientHeight;
+    const m = W < 820 ? 'single' : 'spread';
+    const ratio = 1.42;
+    const availH = Math.max(380, H - (m === 'single' ? 250 : W < 1100 ? 216 : 190));
+    const side = W >= 1100 ? 548 : 0; // room for the two info columns
+    let pw = m === 'single' ? Math.min(W - 32, 480) : Math.min((W - 64 - side) / 2, 500);
+    let ph = pw * ratio;
+    if (ph > availH) { ph = availH; pw = ph / ratio; }
+    const r = document.documentElement.style;
+    r.setProperty('--pw', pw + 'px'); r.setProperty('--ph', ph + 'px');
+    r.setProperty('--fs', Math.max(12, pw / 25.5) + 'px');
+    if (m !== mode) build(m);
+  }
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(size, 120); });
+  size();
+  const h = location.hash.slice(1);
+  if (h && PAGES.some(p => p.id === h)) {
+    const p = PAGES.findIndex(q => q.id === h);
+    cur = mode === 'spread' ? Math.ceil(p / 2) : p; layout(true);
+  }
+})();
+</script>
+<aside class="side l" aria-label="Record">
+<section><div class="lbl">Latest report</div><b class="big">222,277 deaths</b><i>in four weeks to 2026-08-22</i><i>Mortality factor 1.000</i><i class="m"><a>0x789d031a…</a> on Base</i></section>
+<section><div class="lbl">Project log</div>
+<div class="ev" style="border:0;margin:0"><span>Oct 25, 2026</span><b>First weekly emission (test network)</b><i>Scheduled on Base Sepolia. Test tokens have no value.</i></div>
+<div class="ev"><span>Oct 21, 2026</span><b>Whitepaper 1.0 draft</b><i>The full mechanism, risks and limits.</i></div>
+<div class="ev"><span>Oct 18, 2026</span><b>New test deployment</b><i>Six contracts on Base Sepolia, verified.</i></div></section>
+</aside>
+<aside class="side r" aria-label="Network">
+<section><div class="lbl">Next emission</div><b class="big">in 1 d 2 h</b><i>First emission, Oct 25, 15:18 UTC</i><i>Half to miners, half to stakers.</i></section>
+<section><div class="lbl">Mining on Base</div><b class="big">0 solutions</b><i>Starts with the first emission.</i></section>
+<section><div class="lbl">Bloodcoin chain</div><b class="big">Block 34,182</b><i>every 26 s · <a>explorer</a> · <a>all reports</a></i></section>
+</aside>
+</body>
+</html>

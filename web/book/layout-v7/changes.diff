@@ -1,0 +1,99 @@
+--- index.html	2026-10-24 08:45:10.828588511 +0000
++++ v-7.html	2026-10-24 13:09:29.826477312 +0000
+@@ -226,6 +226,29 @@
+ .where .c{font:italic 16px/1.2 var(--f-italic); color:#e6d3a8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:56vw}
+ .where .h{font:11px/1.2 var(--f-mono); color:rgba(201,162,90,.7); letter-spacing:.04em}
+ @media (prefers-reduced-motion: reduce){:root{--turn:0s} .cover .open{animation:none}}
++
++/* side columns (desktop >=1100px) in ledger style; ticker line on smaller screens */
++.side{position:fixed;top:56px;bottom:16px;width:210px;z-index:3;display:flex;flex-direction:column;justify-content:center;gap:18px;color:#eadfc4;font-family:var(--f-body);font-size:13px;line-height:1.32}
++.side.l{left:max(16px,calc(50% - var(--pw) - 236px))}.side.r{right:max(16px,calc(50% - var(--pw) - 236px))}
++.side section{background:rgba(8,5,4,.82);border-top:1px solid rgba(201,162,90,.6);border-bottom:1px solid rgba(201,162,90,.6);padding:10px 14px}
++.side .lbl{font:500 10px var(--f-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
++.side b.big{display:block;font:500 19px var(--f-body);color:#f3e6c6;margin:.2em 0 .1em;font-variant-numeric:lining-nums}
++.side i{display:block;opacity:.85}.side a{color:var(--gold)}
++.side .ev{padding-top:.55em;margin-top:.55em;border-top:1px dotted rgba(201,162,90,.3)}
++.side .ev span{display:block;font:10.5px var(--f-mono);color:var(--gold);opacity:.8}.side .ev b{display:block;font-weight:500}.side .ev i{font-size:12px}
++.ticker{display:none;flex:none;overflow:hidden;white-space:nowrap;height:24px;line-height:24px;background:#0b0605;border-bottom:1px solid rgba(201,162,90,.3);font:12px var(--f-mono);color:#e8d9b4;position:relative;z-index:2}
++.ticker .run{display:inline-block;padding-left:100%;animation:tick 38s linear infinite}
++.ticker em{font-style:normal;color:var(--gold);letter-spacing:.12em;margin-right:.5em}.ticker .sep{color:var(--blood-hi);margin:0 1.1em}
++@keyframes tick{to{transform:translateX(-100%)}}
++@media (prefers-reduced-motion:reduce){.ticker{overflow-x:auto}.ticker .run{animation:none;padding-left:16px}}
++@media (max-width:1099px){.side{display:none}.ticker{display:block}}
++
++.pg-title{position:absolute;left:0;right:0;z-index:4;top:calc(50% - var(--ph) / 2 - 34px);text-align:center;padding:0 16px;font:italic 19px/1.2 var(--f-italic);color:#e6d3a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
++/* desktop: arrows sit left and right of the book */
++.single .pg-title{top:calc(50% - var(--ph) / 2 - 66px)}
++.stage>.nav{position:absolute;top:50%;transform:translateY(-50%);z-index:5}
++.stage>#prev{left:calc(50% - var(--pw) - 60px)}.stage>#next{right:calc(50% - var(--pw) - 60px)}
++.side.l{left:max(16px,calc(50% - var(--pw) - 290px))}.side.r{right:max(16px,calc(50% - var(--pw) - 290px))}
+ </style>
+ </head>
+ <body>
+@@ -235,14 +258,16 @@
+ 
+ <canvas id="matrix" aria-hidden="true"></canvas><div class="vignette" aria-hidden="true"></div>
+ <div class="banner" role="note"><b>IN DEVELOPMENT</b>Bloodcoin is still in development. BCUS is not yet available for purchase.</div>
++<div class="ticker" aria-label="Live record"><span class="run"><em>LATEST REPORT</em>222,277 deaths in four weeks to 2026-08-22 · factor 1.000<span class="sep">◆</span><em>NEXT EMISSION</em>in 1 d 2 h · Oct 25, 15:18 UTC<span class="sep">◆</span><em>MINING</em>0 solutions<span class="sep">◆</span><em>CHAIN</em>Block 34,182 · every 26 s<span class="sep">◆</span><em>LOG</em>Oct 25 first weekly emission (test network)</span></div>
+ 
+ <main class="stage" id="stage" aria-label="Bloodcoin, a book in eight leaves">
++<div class="pg-title" aria-live="polite"><span id="where">Bloodcoin</span></div>
+   <div class="clip"><div class="book" id="book"><div class="ribbon" aria-hidden="true"></div></div></div>
+ </main>
+ 
+ <nav class="controls" aria-label="Turn pages">
+   <button class="nav" id="prev" aria-label="Previous page">&#8249;</button>
+-  <div class="where" aria-live="polite"><span class="c" id="where">Bloodcoin</span><span class="h" id="hint">Tap the page, swipe or use the arrow keys</span></div>
++  <div class="where"><span class="h" id="hint">Tap the page, swipe or use the arrow keys</span></div>
+   <button class="nav" id="next" aria-label="Next page">&#8250;</button>
+ </nav>
+ 
+@@ -492,6 +517,10 @@
+     return f;
+   }
+ 
++  function placeNav() {
++    const box = mode === 'spread' ? stage : document.querySelector('.controls');
++    box.prepend(prevBtn); box.append(nextBtn);
++  }
+   function build(newMode) {
+     // remember which page is in view
+     const seen = mode ? PAGES[visiblePage()] : null;
+@@ -515,6 +544,7 @@
+     cur = mode === 'spread' ? Math.ceil(page / 2) : page;
+     book.querySelectorAll('[data-go]').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); goTo(b.dataset.go); }));
+     const form = book.querySelector('#newsletter'); if (form) form.addEventListener('submit', onSubmit);
++    placeNav();
+     fillLedger();
+     paintHashes();
+     layout(true);
+@@ -651,8 +681,9 @@
+     const W = document.documentElement.clientWidth, H = document.documentElement.clientHeight;
+     const m = W < 820 ? 'single' : 'spread';
+     const ratio = 1.42;
+-    const availH = Math.max(380, H - (m === 'single' ? 190 : 160));
+-    let pw = m === 'single' ? Math.min(W - 32, 480) : Math.min((W - 64) / 2, 500);
++    const availH = Math.max(380, H - (m === 'single' ? 250 : W < 1100 ? 216 : 190));
++    const side = W >= 1100 ? 548 : 0; // room for the two info columns
++    let pw = m === 'single' ? Math.min(W - 32, 480) : Math.min((W - 64 - side) / 2, 500);
+     let ph = pw * ratio;
+     if (ph > availH) { ph = availH; pw = ph / ratio; }
+     const r = document.documentElement.style;
+@@ -669,5 +700,17 @@
+   }
+ })();
+ </script>
++<aside class="side l" aria-label="Record">
++<section><div class="lbl">Latest report</div><b class="big">222,277 deaths</b><i>in four weeks to 2026-08-22</i><i>Mortality factor 1.000</i><i class="m"><a>0x789d031a…</a> on Base</i></section>
++<section><div class="lbl">Project log</div>
++<div class="ev" style="border:0;margin:0"><span>Oct 25, 2026</span><b>First weekly emission (test network)</b><i>Scheduled on Base Sepolia. Test tokens have no value.</i></div>
++<div class="ev"><span>Oct 21, 2026</span><b>Whitepaper 1.0 draft</b><i>The full mechanism, risks and limits.</i></div>
++<div class="ev"><span>Oct 18, 2026</span><b>New test deployment</b><i>Six contracts on Base Sepolia, verified.</i></div></section>
++</aside>
++<aside class="side r" aria-label="Network">
++<section><div class="lbl">Next emission</div><b class="big">in 1 d 2 h</b><i>First emission, Oct 25, 15:18 UTC</i><i>Half to miners, half to stakers.</i></section>
++<section><div class="lbl">Mining on Base</div><b class="big">0 solutions</b><i>Starts with the first emission.</i></section>
++<section><div class="lbl">Bloodcoin chain</div><b class="big">Block 34,182</b><i>every 26 s · <a>explorer</a> · <a>all reports</a></i></section>
++</aside>
+ </body>
+ </html>
