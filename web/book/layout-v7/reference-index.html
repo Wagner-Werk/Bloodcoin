@@ -47,7 +47,7 @@ body{
 .stage{flex:1; min-height:0; overflow:hidden; display:flex; align-items:center; justify-content:center; position:relative;
   padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); padding-block:18px 8px}
 .clip{position:relative; max-width:100%}
-.single .clip{overflow:hidden; width:var(--pw); height:calc(var(--ph) + 60px); padding-top:0}
+.single .clip{overflow:hidden; width:var(--pw); height:calc(var(--ph) + 8px); padding-top:0}
 .book{position:relative; width:calc(var(--pw)*2); height:var(--ph); perspective:2600px;
   transition:transform var(--turn) cubic-bezier(.6,.05,.3,1); font-size:var(--fs)}
 .single .book{width:var(--pw); perspective:1800px}
@@ -243,9 +243,12 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
 @media (prefers-reduced-motion:reduce){.ticker{overflow-x:auto}.ticker .run{animation:none;padding-left:16px}}
 @media (max-width:1099px){.side{display:none}.ticker{display:block}}
 
-.pg-title{position:absolute;left:0;right:0;z-index:4;top:calc(50% - var(--ph) / 2 - 34px);text-align:center;padding:0 16px;font:italic 19px/1.2 var(--f-italic);color:#e6d3a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tight .pg-in{font-size:.95em;gap:.5em}
+.side{overflow-y:auto;scrollbar-width:none}
+.pg-title{position:absolute;left:0;right:0;z-index:4;top:calc(50% - var(--ph) / 2 - 30px);text-align:center;padding:0 16px;font:italic 19px/1.2 var(--f-italic);color:#e6d3a8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* desktop: arrows sit left and right of the book */
-.single .pg-title{top:calc(50% - var(--ph) / 2 - 66px)}
+@media (max-width:600px){.banner{font-size:10.5px;padding-block:5px;line-height:1.35}.controls{padding-block:4px 8px}.nav{width:40px;height:40px}}
+.single .pg-title{top:calc(50% - var(--ph) / 2 - 32px)}
 .stage>.nav{position:absolute;top:50%;transform:translateY(-50%);z-index:5}
 .stage>#prev{left:calc(50% - var(--pw) - 60px)}.stage>#next{right:calc(50% - var(--pw) - 60px)}
 .side.l{left:max(16px,calc(50% - var(--pw) - 290px))}.side.r{right:max(16px,calc(50% - var(--pw) - 290px))}
@@ -262,7 +265,7 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
 
 <main class="stage" id="stage" aria-label="Bloodcoin, a book in eight leaves">
 <div class="pg-title" aria-live="polite"><span id="where">Bloodcoin</span></div>
-  <div class="clip"><div class="book" id="book"><div class="ribbon" aria-hidden="true"></div></div></div>
+  <div class="clip"><div class="book" id="book"></div></div>
 </main>
 
 <nav class="controls" aria-label="Turn pages">
@@ -357,7 +360,7 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
     </ol>
   </section>
 
-  <section data-kind="paper" data-label="V. The trace" data-id="trace">
+  <section data-kind="paper" data-label="V. The trace" data-id="trace" class="tight">
     <div class="eyebrow">Chapter V</div>
     <h2>The trace</h2>
     <p>BCUS is a token on Base. It grows only when a new week is written.</p>
@@ -681,7 +684,7 @@ input[type=email]{font:1em var(--f-body); color:var(--ink); background:rgba(255,
     const W = document.documentElement.clientWidth, H = document.documentElement.clientHeight;
     const m = W < 820 ? 'single' : 'spread';
     const ratio = 1.42;
-    const availH = Math.max(380, H - (m === 'single' ? 250 : W < 1100 ? 216 : 190));
+    const availH = Math.max(300, stage.clientHeight - (m === 'single' ? 70 : 66)); // measured: room for the title above the book
     const side = W >= 1100 ? 548 : 0; // room for the two info columns
     let pw = m === 'single' ? Math.min(W - 32, 480) : Math.min((W - 64 - side) / 2, 500);
     let ph = pw * ratio;
