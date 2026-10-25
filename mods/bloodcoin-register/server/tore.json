@@ -1,0 +1,55 @@
+{
+  "goLive": "2026-10-31T00:00:00+01:00",
+  "abbruch": "2026-10-30T20:00:00+01:00",
+  "emissionStart": "2026-10-25T15:18:00Z",
+  "miningTest": "2026-10-26T13:00:00Z",
+  "tore": [
+    {
+      "nr": "I",
+      "text": "SSH nur mit Schlüssel",
+      "state": "erledigt",
+      "datum": "2026-10-23"
+    },
+    {
+      "nr": "II",
+      "text": "Backup inkl. Keystores",
+      "state": "erledigt",
+      "datum": "2026-10-24"
+    },
+    {
+      "nr": "III",
+      "text": "Offsite-Backup (Storage Box)",
+      "state": "offen"
+    },
+    {
+      "nr": "IV",
+      "text": "Bratschi schriftlich",
+      "state": "offen"
+    },
+    {
+      "nr": "V",
+      "text": "Mining-Test + PR #1 mergen",
+      "state": "geplant"
+    },
+    {
+      "nr": "VI",
+      "text": "PR #2 Faktor ≤ 1.0, Redeploy",
+      "state": "offen"
+    },
+    {
+      "nr": "VII",
+      "text": "S6 Orakel-Härtung",
+      "state": "offen"
+    },
+    {
+      "nr": "VIII",
+      "text": "S7 Remote Control ohne root",
+      "state": "offen"
+    },
+    {
+      "nr": "IX",
+      "text": "Audit oder bewusster Verzicht",
+      "state": "offen"
+    }
+  ]
+}
