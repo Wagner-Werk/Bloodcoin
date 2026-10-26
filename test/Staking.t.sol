@@ -6,6 +6,11 @@ import {BloodcoinToken} from "../src/BloodcoinToken.sol";
 import {MortalityEmission} from "../src/MortalityEmission.sol";
 import {BcusStaking} from "../src/BcusStaking.sol";
 
+/// Nur für Tests: Obergrenze setzen können (im Echtbetrieb gibt es keinen Setter).
+contract StakingHarness is BcusStaking {
+    function setMax(uint256 v) external { maxWeeklyBp = v; }
+}
+
 contract StakingTest is Test {
     uint256 constant START = 1_800_000_000;
     address constant HOLDER = address(0xCAFE);
@@ -19,7 +24,9 @@ contract StakingTest is Test {
 
     function setUp() public {
         vm.warp(START);
-        st = new BcusStaking();
+        StakingHarness h = new StakingHarness();
+        h.setMax(10_000);                                // Obergrenze für die meisten Tests aus
+        st = h;
         em = new MortalityEmission(address(0x0A), address(st), address(0), HOLDER, 1_000_000e18);
         st.bind(address(em));
         token = em.token();
@@ -205,6 +212,47 @@ contract StakingTest is Test {
         assertSolvent();
     }
 
+    // ---------------------------------------------------------------- Obergrenze
+
+    function testWeeklyCapLimitsEarlyStakers() public {
+        BcusStaking cs = new BcusStaking();              // echte Grenze: 1 % pro Woche
+        MortalityEmission ce = new MortalityEmission(address(0x0A), address(cs), address(0), HOLDER, 1_000_000e18);
+        cs.bind(address(ce));
+        BloodcoinToken t = ce.token();
+        vm.prank(HOLDER);
+        t.transfer(ALICE, 100e18);
+        vm.prank(ALICE);
+        t.approve(address(cs), type(uint256).max);
+        vm.prank(ALICE);
+        cs.stake(100e18);                                // gesamter Umlauf, Anteil 100 %
+        vm.warp(START + 1 weeks);
+        cs.pull();
+        vm.warp(START + 2 weeks - 1);
+        vm.prank(ALICE);
+        cs.claim();
+        assertNear(t.balanceOf(ALICE), 100e18 + 1e18, 1e16);   // höchstens 1 % von 100
+        assertNear(t.balanceOf(cs.BURN()), base - 1e18, 1e16); // Rest verbrannt (kein Mining)
+    }
+
+    function testCapScalesWithWeeksSinceLastSync() public {
+        BcusStaking cs = new BcusStaking();
+        MortalityEmission ce = new MortalityEmission(address(0x0A), address(cs), address(0), HOLDER, 1_000_000e18);
+        cs.bind(address(ce));
+        BloodcoinToken t = ce.token();
+        vm.prank(HOLDER);
+        t.transfer(ALICE, 100e18);
+        vm.prank(ALICE);
+        t.approve(address(cs), type(uint256).max);
+        vm.prank(ALICE);
+        cs.stake(100e18);
+        vm.warp(START + 3 weeks);                        // 3 Wochen aufgelaufen, ein Sync
+        cs.pull();
+        vm.warp(START + 4 weeks - 1);
+        vm.prank(ALICE);
+        cs.claim();
+        assertNear(t.balanceOf(ALICE), 100e18 + 3e18, 1e16);
+    }
+
     function testFounderLockAndBurnDoNotCount() public {
         trim(ALICE, 100e18);
         trim(BOB, 0);
@@ -216,7 +264,8 @@ contract StakingTest is Test {
 
     function testRestGoesToMiningWhenThereIsAMiner() public {
         address minerAddr = address(0xBEEF);
-        BcusStaking st2 = new BcusStaking();
+        StakingHarness st2 = new StakingHarness();
+        st2.setMax(10_000);
         MortalityEmission em2 = new MortalityEmission(address(0x0A), address(st2), minerAddr, HOLDER, 1_000_000e18);
         st2.bind(address(em2));
         BloodcoinToken t2 = em2.token();

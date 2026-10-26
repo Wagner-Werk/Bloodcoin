@@ -38,6 +38,10 @@ contract BcusStaking is ReentrancyGuard {
 
     uint256 public constant DURATION = 7 days;
     /// Übliche Verbrennungsadresse; zu ihr gibt es keinen Schlüssel.
+    /// Obergrenze für die Staker: höchstens 1 % der gestakten Menge pro Woche seit der letzten
+    /// Ausgabe. Technische Grenze, kein Versprechen. Was darüber liegt, geht ans Mining.
+    uint256 public maxWeeklyBp = 100;
+    uint256 public lastSyncAt;
     address public constant BURN = 0x000000000000000000000000000000000000dEaD;
 
     address private immutable deployer;
@@ -86,6 +90,7 @@ contract BcusStaking is ReentrancyGuard {
         token = IEmission(emission_).token();
         mining = IEmission(emission_).miner();
         founderLock = IEmission(emission_).initialHolder();
+        lastSyncAt = block.timestamp;
         emit Bound(emission_, address(token));
     }
 
@@ -187,6 +192,10 @@ contract BcusStaking is ReentrancyGuard {
             // Der Anteil gilt für den Stand vor dieser Aktion (stake() zählt den neuen Einsatz erst
             // danach), wer kurz vor der Ausgabe einsteigt, erhöht den Anteil also nicht.
             uint256 part = fresh * stakerShareBp() / 10_000;
+            uint256 weeks_ = (block.timestamp - lastSyncAt + 1 weeks - 1) / 1 weeks;
+            if (weeks_ == 0) weeks_ = 1;
+            uint256 cap = totalStaked * maxWeeklyBp * weeks_ / 10_000;
+            if (part > cap) part = cap;
             uint256 rest = fresh - part;
             if (rest > 0) {
                 address to = mining == address(0) ? BURN : mining;
@@ -198,6 +207,7 @@ contract BcusStaking is ReentrancyGuard {
                 reserved += part;
                 _notify(part);
             }
+            lastSyncAt = block.timestamp;
         }
     }
 

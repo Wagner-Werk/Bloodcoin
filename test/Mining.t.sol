@@ -17,6 +17,10 @@ contract MiningHarness is BcusMining {
     }
 }
 
+contract MiningStakingHarness is BcusStaking {
+    function setMax(uint256 v) external { maxWeeklyBp = v; }
+}
+
 contract MiningTest is Test {
     uint256 constant START = 1_800_000_000;
     address constant ALICE = address(0xA11CE);
@@ -32,7 +36,9 @@ contract MiningTest is Test {
 
     function setUp() public {
         vm.warp(START);
-        st = new BcusStaking();
+        MiningStakingHarness h = new MiningStakingHarness();
+        h.setMax(10_000);                                // Obergrenze hier aus, getestet in Staking.t.sol
+        st = h;
         mn = new MiningHarness();
         lock = new FounderLock(FOUNDER);
         em = new MortalityEmission(address(0x0A), address(st), address(mn), address(lock), 1_000_000e18);
