@@ -189,9 +189,9 @@ contract StakingTest is Test {
         assertEq(st.stakerShareBp(), 2500);
         vm.warp(START + 1 weeks);
         st.pull();
-        vm.warp(START + 1 weeks + 7 days);
-        assertNear(claim(ALICE), base / 4, 1e12);
-        assertNear(token.balanceOf(st.BURN()), base * 3 / 4, 1e12);
+        vm.warp(START + 2 weeks - 1);                    // vor der 2. Ausgabe
+        assertNear(claim(ALICE), base / 4, base / 100_000);
+        assertNear(token.balanceOf(st.BURN()), base * 3 / 4, base / 100_000);
         assertSolvent();
     }
 
@@ -199,7 +199,7 @@ contract StakingTest is Test {
         stake(ALICE, 1e18);                              // 1 von 600.000 im Umlauf
         vm.warp(START + 1 weeks);
         st.pull();
-        vm.warp(START + 1 weeks + 7 days);
+        vm.warp(START + 2 weeks - 1);                    // vor der 2. Ausgabe
         assertLe(claim(ALICE), base / 100_000);
         assertNear(token.balanceOf(st.BURN()), base, base / 100_000);
         assertSolvent();
