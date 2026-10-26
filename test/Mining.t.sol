@@ -37,7 +37,7 @@ contract MiningTest is Test {
     function setUp() public {
         vm.warp(START);
         MiningStakingHarness h = new MiningStakingHarness();
-        h.setMax(10_000);                                // Obergrenze hier aus, getestet in Staking.t.sol
+        h.setMax(1e12);                                // Obergrenze hier aus, getestet in Staking.t.sol
         st = h;
         mn = new MiningHarness();
         lock = new FounderLock(FOUNDER);

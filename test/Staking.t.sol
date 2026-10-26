@@ -25,7 +25,7 @@ contract StakingTest is Test {
     function setUp() public {
         vm.warp(START);
         StakingHarness h = new StakingHarness();
-        h.setMax(10_000);                                // Obergrenze für die meisten Tests aus
+        h.setMax(1e12);                                // Obergrenze für die meisten Tests praktisch aus
         st = h;
         em = new MortalityEmission(address(0x0A), address(st), address(0), HOLDER, 1_000_000e18);
         st.bind(address(em));
@@ -230,7 +230,7 @@ contract StakingTest is Test {
         vm.warp(START + 2 weeks - 1);
         vm.prank(ALICE);
         cs.claim();
-        assertNear(t.balanceOf(ALICE), 100e18 + 1e18, 1e16);   // höchstens 1 % von 100
+        assertNear(t.balanceOf(ALICE), 1e18, 1e16);           // Belohnung höchstens 1 % von 100 (Einsatz bleibt gestakt)
         assertNear(t.balanceOf(cs.BURN()), base - 1e18, 1e16); // Rest verbrannt (kein Mining)
     }
 
@@ -250,7 +250,7 @@ contract StakingTest is Test {
         vm.warp(START + 4 weeks - 1);
         vm.prank(ALICE);
         cs.claim();
-        assertNear(t.balanceOf(ALICE), 100e18 + 3e18, 1e16);
+        assertNear(t.balanceOf(ALICE), 3e18, 1e16);
     }
 
     function testFounderLockAndBurnDoNotCount() public {
@@ -265,7 +265,7 @@ contract StakingTest is Test {
     function testRestGoesToMiningWhenThereIsAMiner() public {
         address minerAddr = address(0xBEEF);
         StakingHarness st2 = new StakingHarness();
-        st2.setMax(10_000);
+        st2.setMax(1e12);
         MortalityEmission em2 = new MortalityEmission(address(0x0A), address(st2), minerAddr, HOLDER, 1_000_000e18);
         st2.bind(address(em2));
         BloodcoinToken t2 = em2.token();
