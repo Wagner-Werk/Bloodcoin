@@ -9,8 +9,9 @@ import {FounderLock} from "../src/FounderLock.sol";
 
 /// Aufbau wie DeploySigned: alle Start-BCUS im FounderLock, niemand sonst hat BCUS.
 /// Früher sammelte das Staking die Emission für den ersten Staker, und das war zwangsläufig der
-/// Gründer. Jetzt wird verbrannt, was ohne Staker fließt. Der Gründer steigt hier nach zwei Jahren
-/// mit dem ein, was bis dahin frei ist (200.000 BCUS), und bekommt trotzdem keinen Topf.
+/// Gründer. Jetzt wird verbrannt, was ohne Staker fließt (hier ohne Mining-Contract an die
+/// Verbrennungsadresse). Der Gründer steigt hier nach zwei Jahren mit dem ein, was bis dahin frei
+/// ist (200.000 BCUS), und bekommt trotzdem keinen Topf.
 contract FounderScenarioTest is Test {
     uint256 constant START = 1_800_000_000;
     address constant FOUNDER = address(0xF00D);
@@ -48,7 +49,7 @@ contract FounderScenarioTest is Test {
         vm.stopPrank();
 
         // Fast alles aus den zwei Jahren ist verbrannt; offen ist höchstens der laufende Wochenstrom.
-        assertLe(104 * base - 2 * base, st.burned());
+        assertLe(104 * base - 2 * base, token.balanceOf(st.BURN()));
 
         vm.warp(START + 730 days + 1 weeks);
         st.pull();                                       // hier startete früher der Topf-Strom

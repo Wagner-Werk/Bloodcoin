@@ -48,6 +48,9 @@ contract MortalityEmission {
     address public immutable oracle;
     address public immutable recipient;
     address public immutable miner;
+    /// Erster Halter der Startmenge (im Mainnet der FounderLock). Wird vom Staking gebraucht, um
+    /// die noch gesperrten Gründer-Coins aus dem Umlauf herauszurechnen.
+    address public immutable initialHolder;
     uint256 public immutable start;
 
     uint256 public settledEpochs;       // so viele Epochen sind abgerechnet
@@ -68,12 +71,13 @@ contract MortalityEmission {
     error NotASaturday();
     error BadDeaths();
 
-    constructor(address oracle_, address recipient_, address miner_, address initialHolder, uint256 initialMint) {
+    constructor(address oracle_, address recipient_, address miner_, address initialHolder_, uint256 initialMint) {
         oracle = oracle_;
         recipient = recipient_;
         miner = miner_;
+        initialHolder = initialHolder_;
         start = block.timestamp;
-        token = new BloodcoinToken(address(this), initialHolder, initialMint);
+        token = new BloodcoinToken(address(this), initialHolder_, initialMint);
     }
 
     // ------------------------------------------------------------------ Sterbe-Faktor
