@@ -1,7 +1,5 @@
 # Security and bug bounty
 
-> **Draft, not yet in force.** These rules apply only once this notice is removed.
-
 ## Status
 
 The BCUS contracts have **not been externally audited**. They were reviewed internally
@@ -43,6 +41,7 @@ BCUS has no market value today. Rewards are paid from the founder allocation as 
 4. Test only on Base Sepolia or a local fork. No attacks on other users or on the servers.
 5. Not open to US persons or to persons in sanctioned countries.
 6. The project decides the severity. Reasons are given in writing.
+7. A reward is not paid where paying it would be unlawful for the project or the recipient.
 
 ## Known issues (no reward)
 
