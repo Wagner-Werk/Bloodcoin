@@ -8,6 +8,8 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol
 interface IEmission {
     function token() external view returns (IERC20);
     function recipient() external view returns (address);
+    function miner() external view returns (address);
+    function initialHolder() external view returns (address);
     function mint() external returns (uint256);
 }
 
@@ -17,16 +19,36 @@ interface IEmission {
 ///         folgenden 7 Tage ausgezahlt (Verfahren von Synthetix StakingRewards). Wer nur kurz
 ///         vor einer Ausgabe einsteigt, bekommt deshalb nur seinen zeitlichen Anteil.
 ///
+///         Anteils-Regel: Staker bekommen von jeder Ausgabe nur den Teil, der ihrem Anteil an den
+///         frei umlaufenden Coins entspricht (gestaktes BCUS geteilt durch Umlauf, höchstens 1).
+///         Den Rest dieser Hälfte bekommt das Mining. Wer also die Hälfte aller umlaufenden Coins
+///         stakt, bekommt die Hälfte der Staking-Ausgabe, wer 1 % stakt, bekommt 1 %. Ein einzelner
+///         früher Staker kann deshalb nicht die ganze Staking-Hälfte abgreifen. Zum Umlauf zählt
+///         nicht: der FounderLock (noch nicht freigegebene Gründer-Coins), der Mining-Vorrat, die
+///         Verbrennungsadresse und nicht abgeholte Staking-Belohnungen. Gestakte Coins zählen mit.
+///
+///         Läuft der Strom, während niemand gestakt hat, wird dieser Teil verbrannt (an BURN
+///         geschickt) und nicht aufgehoben. Sonst bekäme der erste Staker alles, was bis dahin
+///         angekommen ist.
+///
 ///         Einzahlen, Abheben und Abholen geht jederzeit und ohne Sperrfrist. Es gibt keinen
 ///         Besitzer. `bind` kann nur der Deployer genau einmal aufrufen.
 contract BcusStaking is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     uint256 public constant DURATION = 7 days;
+    /// Übliche Verbrennungsadresse; zu ihr gibt es keinen Schlüssel.
+    /// Obergrenze für die Staker: höchstens 1 % der gestakten Menge pro Woche seit der letzten
+    /// Ausgabe. Technische Grenze, kein Versprechen. Was darüber liegt, geht ans Mining.
+    uint256 public maxWeeklyBp = 100;
+    uint256 public lastSyncAt;
+    address public constant BURN = 0x000000000000000000000000000000000000dEaD;
 
     address private immutable deployer;
     IEmission public emission;
     IERC20 public token;
+    address public mining;                  // bekommt den Teil, den Staker nicht beanspruchen
+    address public founderLock;             // hält die noch gesperrten Gründer-Coins
 
     uint256 public totalStaked;
     mapping(address => uint256) public stakedOf;
@@ -35,7 +57,10 @@ contract BcusStaking is ReentrancyGuard {
     uint256 public periodFinish;
     uint256 public lastUpdate;
     uint256 public rewardPerTokenStored;
-    uint256 public undistributed;           // Belohnung aus Zeiten, in denen niemand gestakt hatte
+    uint256 public undistributed;           // Rundungsrest, fließt in die nächste Ausgabe
+    uint256 public burned;                  // Summe, die ohne Staker verbrannt wurde
+    uint256 public sentToMining;            // Summe, die wegen der Anteils-Regel ans Mining ging
+    uint256 private toBurn;                 // in _accrue gesammelt, in _sync verbrannt
     uint256 public reserved;                // alle BCUS im Contract, die Belohnung sind (nicht Einsatz)
     mapping(address => uint256) public paidPerToken;
     mapping(address => uint256) public rewards;
@@ -45,6 +70,8 @@ contract BcusStaking is ReentrancyGuard {
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 amount);
     event RewardAdded(uint256 amount, uint256 rewardRate, uint256 periodFinish);
+    event Burned(uint256 amount);
+    event ToMining(uint256 amount);
 
     error AlreadyBound();
     error NotBound();
@@ -61,6 +88,9 @@ contract BcusStaking is ReentrancyGuard {
         if (IEmission(emission_).recipient() != address(this)) revert WrongRecipient();
         emission = IEmission(emission_);
         token = IEmission(emission_).token();
+        mining = IEmission(emission_).miner();
+        founderLock = IEmission(emission_).initialHolder();
+        lastSyncAt = block.timestamp;
         emit Bound(emission_, address(token));
     }
 
@@ -73,6 +103,24 @@ contract BcusStaking is ReentrancyGuard {
     function rewardPerToken() public view returns (uint256) {
         if (totalStaked == 0) return rewardPerTokenStored;
         return rewardPerTokenStored + (lastTimeRewardApplicable() - lastUpdate) * rewardRate * 1e18 / totalStaked;
+    }
+
+    /// @notice Frei umlaufende Coins: alles Ausgegebene ohne FounderLock, Mining-Vorrat,
+    ///         Verbrennungsadresse und die Belohnungen in diesem Contract (gestaktes BCUS zählt mit).
+    function circulating() public view returns (uint256) {
+        uint256 held = token.balanceOf(BURN) + token.balanceOf(founderLock) + token.balanceOf(mining)
+            + (token.balanceOf(address(this)) - totalStaked);
+        uint256 supply = token.totalSupply();
+        return supply > held ? supply - held : 0;
+    }
+
+    /// @notice Anteil der gestakten Coins am Umlauf in Basispunkten (10000 = alles), der Teil der
+    ///         nächsten Ausgabe, den die Staker bekommen.
+    function stakerShareBp() public view returns (uint256) {
+        uint256 c = circulating();
+        if (totalStaked == 0 || c == 0) return 0;
+        if (totalStaked >= c) return 10_000;
+        return totalStaked * 10_000 / c;
     }
 
     /// @notice Bereits verdiente, noch nicht abgeholte Belohnung (ohne noch nicht abgeholte Ausgabe).
@@ -119,7 +167,7 @@ contract BcusStaking is ReentrancyGuard {
 
     /// @notice Holt fällige neue BCUS beim Emissions-Contract ab und startet ihre Auszahlung über
     ///         7 Tage. Darf jeder aufrufen; passiert auch bei jedem Stake, Abheben und Abholen.
-    ///         Gesammelte Reste aus Zeiten ohne Staker fließen bei der nächsten Ausgabe mit ein.
+    ///         Was ohne Staker geflossen ist, wird dabei verbrannt.
     function pull() external nonReentrant {
         _sync(address(0));
     }
@@ -129,20 +177,46 @@ contract BcusStaking is ReentrancyGuard {
     function _sync(address user) internal {
         if (address(emission) == address(0)) revert NotBound();
         _accrue(user);
+        uint256 b = toBurn;
+        if (b > 0) {
+            toBurn = 0;
+            reserved -= b;
+            burned += b;
+            token.safeTransfer(BURN, b);
+            emit Burned(b);
+        }
         emission.mint();
         // Was neu angekommen ist, egal wer mint() aufgerufen hat (auch direkt am Emissions-Contract).
         uint256 fresh = token.balanceOf(address(this)) - totalStaked - reserved;
         if (fresh > 0) {
-            reserved += fresh;
-            _notify(fresh);
+            // Der Anteil gilt für den Stand vor dieser Aktion (stake() zählt den neuen Einsatz erst
+            // danach), wer kurz vor der Ausgabe einsteigt, erhöht den Anteil also nicht.
+            uint256 part = fresh * stakerShareBp() / 10_000;
+            uint256 weeks_ = (block.timestamp - lastSyncAt + 1 weeks - 1) / 1 weeks;
+            if (weeks_ == 0) weeks_ = 1;
+            uint256 cap = totalStaked * maxWeeklyBp * weeks_ / 10_000;
+            if (part > cap) part = cap;
+            uint256 rest = fresh - part;
+            if (rest > 0) {
+                address to = mining == address(0) ? BURN : mining;
+                sentToMining += rest;
+                token.safeTransfer(to, rest);
+                emit ToMining(rest);
+            }
+            if (part > 0) {
+                reserved += part;
+                _notify(part);
+            }
+            lastSyncAt = block.timestamp;
         }
     }
 
     function _accrue(address user) internal {
         uint256 applicable = lastTimeRewardApplicable();
         if (totalStaked == 0) {
-            // Ohne Staker läuft der Strom ins Leere; das wird aufgehoben, nicht verloren.
-            if (applicable > lastUpdate) undistributed += (applicable - lastUpdate) * rewardRate;
+            // Ohne Staker gehört der Strom niemandem; er wird verbrannt statt für den ersten Staker
+            // aufgehoben.
+            if (applicable > lastUpdate) toBurn += (applicable - lastUpdate) * rewardRate;
         } else {
             rewardPerTokenStored = rewardPerToken();
         }
@@ -154,11 +228,8 @@ contract BcusStaking is ReentrancyGuard {
     }
 
     function _notify(uint256 amount) internal {
-        uint256 add = amount;
-        if (totalStaked > 0) {
-            add += undistributed;
-            undistributed = 0;
-        }
+        uint256 add = amount + undistributed;
+        undistributed = 0;
         if (block.timestamp < periodFinish) add += (periodFinish - block.timestamp) * rewardRate;
         rewardRate = add / DURATION;
         // Rundungsrest bleibt für die nächste Runde erhalten.
