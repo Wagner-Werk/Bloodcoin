@@ -11,6 +11,7 @@ interface IEmission {
     function miner() external view returns (address);
     function initialHolder() external view returns (address);
     function mint() external returns (uint256);
+    function settledEpochs() external view returns (uint256);
 }
 
 /// @title BCUS-Staking
@@ -25,7 +26,8 @@ interface IEmission {
 ///         stakt, bekommt die Hälfte der Staking-Ausgabe, wer 1 % stakt, bekommt 1 %. Ein einzelner
 ///         früher Staker kann deshalb nicht die ganze Staking-Hälfte abgreifen.
 ///
-///         Gezählt wird dabei der zeitgewichtete Einsatz seit der letzten Verteilung, nicht der
+///         Gezählt wird dabei der zeitgewichtete Einsatz im laufenden Fenster (seit der ersten
+///         Verteilung nach der letzten Emissions-Woche), nicht der
 ///         Einsatz im Augenblick der Verteilung: Wer eine Woche lang 100 BCUS gestakt hat, zählt mit
 ///         100; wer 100.000 BCUS nur sechs Sekunden um die Verteilung herum stakt, zählt mit rund 1.
 ///         Kurzes Staken vor der Verteilung hebt also weder Anteil noch Obergrenze. Zum Umlauf zählt
@@ -48,9 +50,14 @@ contract BcusStaking is ReentrancyGuard {
     /// darüber liegt, geht ans Mining.
     uint256 public maxWeeklyBp = 100;
     uint256 public lastSyncAt;
-    /// Summe aus Einsatz mal Sekunden seit lastSyncAt (zeitgewichteter Einsatz), bis lastStakeUpdate.
+    /// Zeitfenster für Anteil und Obergrenze: beginnt bei lastSyncAt, mit der ersten Verteilung nach
+    /// einer neuen Emissions-Woche. Spenden oder Rundungsreste starten kein neues Fenster.
+    /// stakeSeconds = Summe aus Einsatz mal Sekunden im Fenster (bis lastStakeUpdate),
+    /// paidInWindow = was im Fenster schon an die Staker ging (zählt gegen die Obergrenze).
     uint256 public stakeSeconds;
     uint256 public lastStakeUpdate;
+    uint256 public paidInWindow;
+    uint256 public seenEpochs;
     address public constant BURN = 0x000000000000000000000000000000000000dEaD;
 
     address private immutable deployer;
@@ -143,9 +150,10 @@ contract BcusStaking is ReentrancyGuard {
         return _shareBp(stakeSecondsNow() / elapsed);
     }
 
-    /// @notice Obergrenze, mit der eine Verteilung jetzt rechnen würde.
+    /// @notice Was die Staker in diesem Fenster jetzt noch höchstens bekommen könnten.
     function nextCap() public view returns (uint256) {
-        return stakeSecondsNow() * maxWeeklyBp / (10_000 * 1 weeks);
+        uint256 cap = stakeSecondsNow() * maxWeeklyBp / (10_000 * 1 weeks);
+        return cap > paidInWindow ? cap - paidInWindow : 0;
     }
 
     function _shareBp(uint256 staked) internal view returns (uint256) {
@@ -231,7 +239,9 @@ contract BcusStaking is ReentrancyGuard {
             uint256 elapsed = block.timestamp - lastSyncAt;
             uint256 part = elapsed == 0 ? 0 : fresh * _shareBp(stakeSeconds / elapsed) / 10_000;
             uint256 cap = stakeSeconds * maxWeeklyBp / (10_000 * 1 weeks);
+            cap = cap > paidInWindow ? cap - paidInWindow : 0;
             if (part > cap) part = cap;
+            paidInWindow += part;
             uint256 rest = fresh - part;
             if (rest > 0) {
                 address to = mining == address(0) ? BURN : mining;
@@ -243,8 +253,16 @@ contract BcusStaking is ReentrancyGuard {
                 reserved += part;
                 _notify(part);
             }
-            lastSyncAt = block.timestamp;
-            stakeSeconds = 0;
+            // Neues Fenster nur, wenn eine neue Emissions-Woche dabei war. Sonst könnte jemand mit
+            // einer Spende von 1 wei das Fenster kurz vor der Ausgabe zurücksetzen und die
+            // Obergrenze für die ganze Woche auf wenige Sekunden drücken.
+            uint256 settled = emission.settledEpochs();
+            if (settled > seenEpochs) {
+                seenEpochs = settled;
+                lastSyncAt = block.timestamp;
+                stakeSeconds = 0;
+                paidInWindow = 0;
+            }
         }
     }
 

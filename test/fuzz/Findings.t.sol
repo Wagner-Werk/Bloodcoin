@@ -110,4 +110,42 @@ contract S11FindingsTest is S11Setup {
         // Der Wal bekommt seinen Einsatz voll zurück (plus Staub).
         vmx.assertGe(whaleNet, 99_900e18, "Wal verliert Einsatz");
     }
+
+    // ------------------------------------------------------------------ Befund 3
+
+    /// Was ALICE (50.000 BCUS gestakt, Hälfte des Umlaufs) in einer Woche bekommt, wenn jemand
+    /// eine Sekunde vor der Wochengrenze 1 wei ans Staking schickt und pull() aufruft.
+    function griefedWeek(bool grief) internal returns (uint256 got) {
+        freshS11();
+        vmx.prank(ALICE);
+        st.stake(50_000e18);
+        vmx.prank(ALICE);
+        token.transfer(BOB, 1e18);
+        vmx.warp(START + 53 weeks);
+        st.pull();
+        uint256 r0 = st.reserved();
+        if (grief) {
+            vmx.warp(START + 54 weeks - 1);
+            vmx.prank(BOB);
+            token.transfer(address(st), 1);         // 1 wei Spende
+            st.pull();
+        }
+        vmx.warp(START + 54 weeks + 1);
+        st.pull();
+        got = st.reserved() - r0;
+    }
+
+    /// Befund 3 (entstand mit der ersten Fassung der Korrektur, behoben): Wenn jede Spende das
+    /// Zeitfenster neu startet, kann jemand (etwa ein Miner, dem der Rest zufliesst) mit 1 wei pro
+    /// Woche das Fenster kurz vor der Ausgabe zurücksetzen. Dann gilt die Obergrenze nur für zwei
+    /// Sekunden, und fast die ganze Staking-Hälfte geht ans Mining. Jetzt beginnt ein neues
+    /// Fenster nur, wenn eine neue Emissions-Woche angekommen ist.
+    function testBefund3_SpendeSetztFensterNichtZurueck() public {
+        uint256 normal = griefedWeek(false);
+        uint256 griefed = griefedWeek(true);
+        emit Measured("Woche normal", normal / 1e18);
+        emit Measured("Woche mit 1-wei-Spende kurz vor der Grenze", griefed / 1e18);
+        vmx.assertGe(normal, 499e18, "Kontrollfall nicht rund 1 %");
+        vmx.assertGe(griefed, normal - 1e18, "Spende drueckt die Staker");
+    }
 }
