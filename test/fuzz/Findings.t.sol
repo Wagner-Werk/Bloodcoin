@@ -3,10 +3,9 @@ pragma solidity ^0.8.24;
 
 import {S11Setup} from "./S11Setup.sol";
 
-/// Befunde aus den Fuzz- und Invariantentests, als nachvollziehbare Szenarien.
-/// Diese Tests sind GRÜN, SOLANGE DIE SCHWÄCHE BESTEHT: Sie halten fest, wie sich der Code
-/// heute verhält. Wird der Contract geändert, müssen sie angepasst werden (dann sollten sie
-/// zeigen, dass die Schwäche weg ist). Bericht: siehe PR-Beschreibung.
+/// Befunde aus den Fuzz- und Invariantentests vom 3.11.2026, als nachvollziehbare Szenarien.
+/// Beide sind seit dem zeitgewichteten Einsatz in BcusStaking behoben; die Tests zeigen das.
+/// Vorher ergab B1 10.000 statt 5.000 BCUS und B2 999 statt 1 BCUS.
 contract S11FindingsTest is S11Setup {
     bool public IS_TEST = true;
 
@@ -44,19 +43,18 @@ contract S11FindingsTest is S11Setup {
         got = st.reserved() - r0;              // nichts abgeholt, also alles in der Reserve
     }
 
-    /// Befund 1: Der Deckel rundet die Wochen seit der letzten Synchronisation AUF. Liegen zwischen
-    /// zwei Synchronisationen eine Woche und eine Sekunde, gilt der Deckel für zwei Wochen.
-    /// Wer (in einem ruhigen Netz) selbst bestimmt, wann synchronisiert wird, verschiebt jede Woche
-    /// um eine Sekunde und bekommt dauerhaft 2 % statt 1 % pro Woche.
-    function testBefund1_DeckelRundungErlaubtZweiProzent() public {
+    /// Befund 1 (behoben): Der Deckel rundete die Wochen seit der letzten Synchronisation AUF.
+    /// Wer jede Woche eine Sekunde später synchronisierte, bekam dauerhaft 2 % statt 1 %.
+    /// Jetzt ist der Deckel sekundengenau: eine Sekunde mehr gibt eine Sekunde mehr.
+    function testBefund1_DeckelRundetNichtMehrAuf() public {
         uint256 normal = tenWeeks(0);
         uint256 drift = tenWeeks(1);
         emit Measured("10 Wochen, Sync exakt woechentlich", normal / 1e18);
         emit Measured("10 Wochen, Sync jede Woche 1 s spaeter", drift / 1e18);
         // exakt wöchentlich: 10 x 1 % von 50.000 = 5.000 BCUS
         vmx.assertEq(normal, 5_000e18, "Kontrollfall nicht 1 %/Woche");
-        // eine Sekunde Versatz pro Woche: 10 x 2 % = 10.000 BCUS, also das Doppelte
-        vmx.assertEq(drift, 10_000e18, "Befund 1 nicht mehr reproduzierbar (behoben?)");
+        // eine Sekunde Versatz pro Woche: 10 Sekunden mehr, also praktisch dasselbe (vorher 10.000)
+        vmx.assertLe(drift, 5_000e18 + 1e17, "Deckel ueber 1 %/Woche");
     }
 
     // ------------------------------------------------------------------ Befund 2
@@ -95,22 +93,20 @@ contract S11FindingsTest is S11Setup {
         got = token.balanceOf(BOB) - b0;
     }
 
-    /// Befund 2 (bestätigt den bekannten Punkt M2 aus der Vorprüfung vom 27.10. und beziffert ihn):
-    /// Anteil und Deckel werden im Augenblick der Synchronisation berechnet. Wer viel BCUS hat,
-    /// stakt sie einen Block vor der Wochengrenze, löst nach der Grenze die Verteilung aus und hebt
-    /// einen Block später wieder ab. Sein Geld ist rund 6 Sekunden gebunden, er selbst verdient fast
-    /// nichts, aber die ganze erhöhte Wochenmenge fließt danach an die übrigen Staker, etwa an
-    /// seine eigene zweite Adresse. Anteils-Regel und 1-%-Deckel sind damit für jeden mit
-    /// genug freiem Kapital umgehbar, ohne Sperrzeit und ohne Risiko.
-    function testBefund2_WalUmgehtAnteilUndDeckelInSechsSekunden() public {
+    /// Befund 2 (behoben; war Punkt M2 der Vorprüfung vom 27.10.): Anteil und Deckel wurden im
+    /// Augenblick der Synchronisation berechnet. Ein Wal stakte einen Block vor der Wochengrenze,
+    /// löste nach der Grenze die Verteilung aus und hob einen Block später ab; die erhöhte
+    /// Wochenmenge floss an die übrigen Staker (z. B. seine Zweitadresse). Jetzt zählt der
+    /// zeitgewichtete Einsatz: 6 Sekunden mit 99.900 BCUS zählen wie rund 1 BCUS eine Woche lang.
+    function testBefund2_WalBringtNichtsMehr() public {
         (uint256 alone,) = bobWeek(false);
         (uint256 withWhale, uint256 whaleNet) = bobWeek(true);
         emit Measured("BOB, Woche ohne Wal", alone / 1e18);
         emit Measured("BOB, Woche mit 6-Sekunden-Wal", withWhale / 1e18);
         // Ohne Wal: Deckel 1 % von 100 BCUS = 1 BCUS.
         vmx.assertLe(alone, 1.01e18, "Kontrollfall ueber 1 BCUS");
-        // Mit Wal: fast 1 % von 100.000 BCUS, also rund 1.000 BCUS, das Tausendfache.
-        vmx.assertGe(withWhale, 990e18, "Befund 2 nicht mehr reproduzierbar (behoben?)");
+        // Mit Wal: praktisch dasselbe (vorher 999 BCUS).
+        vmx.assertLe(withWhale, 1.02e18, "Wal hebt Anteil oder Deckel");
         // Der Wal bekommt seinen Einsatz voll zurück (plus Staub).
         vmx.assertGe(whaleNet, 99_900e18, "Wal verliert Einsatz");
     }

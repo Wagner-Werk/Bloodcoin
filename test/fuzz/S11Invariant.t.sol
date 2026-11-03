@@ -151,8 +151,16 @@ contract S11InvariantTest {
         vm.assertLe(h.ghostClaimed(), minted - toMining + h.ghostDonated(), "mehr abgeholt als angekommen");
     }
 
+    /// Über die ganze Laufzeit bekommen die Staker zusammen nie mehr als 1 % pro Woche ihres
+    /// tatsächlichen, sekundengenau gemessenen Einsatzes (eigene Rechnung des Handlers, unabhängig
+    /// vom Contract). Das deckt beide Befunde vom 3.11. ab: Aufrunden (B1) und Kurz-Staken (B2).
+    function invariant_StakersNeverAboveOnePercentPerWeek() public view {
+        vm.assertLe(h.ghostParts(), h.ghostStakeIntegral() / (100 * 1 weeks), "Staker ueber 1 %/Woche");
+    }
+
     function invariant_ShareAtMostAll() public view {
         vm.assertLe(st.stakerShareBp(), 10_000, "Anteil > 100 %");
+        vm.assertLe(st.nextShareBp(), 10_000, "zeitgewichteter Anteil > 100 %");
     }
 
     // ================================================================ FounderLock

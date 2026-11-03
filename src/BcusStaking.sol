@@ -23,7 +23,12 @@ interface IEmission {
 ///         frei umlaufenden Coins entspricht (gestaktes BCUS geteilt durch Umlauf, höchstens 1).
 ///         Den Rest dieser Hälfte bekommt das Mining. Wer also die Hälfte aller umlaufenden Coins
 ///         stakt, bekommt die Hälfte der Staking-Ausgabe, wer 1 % stakt, bekommt 1 %. Ein einzelner
-///         früher Staker kann deshalb nicht die ganze Staking-Hälfte abgreifen. Zum Umlauf zählt
+///         früher Staker kann deshalb nicht die ganze Staking-Hälfte abgreifen.
+///
+///         Gezählt wird dabei der zeitgewichtete Einsatz seit der letzten Verteilung, nicht der
+///         Einsatz im Augenblick der Verteilung: Wer eine Woche lang 100 BCUS gestakt hat, zählt mit
+///         100; wer 100.000 BCUS nur sechs Sekunden um die Verteilung herum stakt, zählt mit rund 1.
+///         Kurzes Staken vor der Verteilung hebt also weder Anteil noch Obergrenze. Zum Umlauf zählt
 ///         nicht: der FounderLock (noch nicht freigegebene Gründer-Coins), der Mining-Vorrat, die
 ///         Verbrennungsadresse und nicht abgeholte Staking-Belohnungen. Gestakte Coins zählen mit.
 ///
@@ -38,10 +43,14 @@ contract BcusStaking is ReentrancyGuard {
 
     uint256 public constant DURATION = 7 days;
     /// Übliche Verbrennungsadresse; zu ihr gibt es keinen Schlüssel.
-    /// Obergrenze für die Staker: höchstens 1 % der gestakten Menge pro Woche seit der letzten
-    /// Ausgabe. Technische Grenze, kein Versprechen. Was darüber liegt, geht ans Mining.
+    /// Obergrenze für die Staker: höchstens 1 % der gestakten Menge pro Woche, sekundengenau über
+    /// die Zeit seit der letzten Verteilung gerechnet. Technische Grenze, kein Versprechen. Was
+    /// darüber liegt, geht ans Mining.
     uint256 public maxWeeklyBp = 100;
     uint256 public lastSyncAt;
+    /// Summe aus Einsatz mal Sekunden seit lastSyncAt (zeitgewichteter Einsatz), bis lastStakeUpdate.
+    uint256 public stakeSeconds;
+    uint256 public lastStakeUpdate;
     address public constant BURN = 0x000000000000000000000000000000000000dEaD;
 
     address private immutable deployer;
@@ -91,6 +100,7 @@ contract BcusStaking is ReentrancyGuard {
         mining = IEmission(emission_).miner();
         founderLock = IEmission(emission_).initialHolder();
         lastSyncAt = block.timestamp;
+        lastStakeUpdate = block.timestamp;
         emit Bound(emission_, address(token));
     }
 
@@ -114,13 +124,35 @@ contract BcusStaking is ReentrancyGuard {
         return supply > held ? supply - held : 0;
     }
 
-    /// @notice Anteil der gestakten Coins am Umlauf in Basispunkten (10000 = alles), der Teil der
-    ///         nächsten Ausgabe, den die Staker bekommen.
+    /// @notice Anteil der jetzt gestakten Coins am Umlauf in Basispunkten (10000 = alles).
+    ///         Für die Verteilung zählt der zeitgewichtete Einsatz, siehe nextShareBp().
     function stakerShareBp() public view returns (uint256) {
+        return _shareBp(totalStaked);
+    }
+
+    /// @notice Zeitgewichteter Einsatz seit der letzten Verteilung, bis jetzt.
+    function stakeSecondsNow() public view returns (uint256) {
+        return stakeSeconds + totalStaked * (block.timestamp - lastStakeUpdate);
+    }
+
+    /// @notice Anteil, mit dem eine Verteilung jetzt rechnen würde: durchschnittlicher Einsatz
+    ///         seit der letzten Verteilung geteilt durch den Umlauf.
+    function nextShareBp() public view returns (uint256) {
+        uint256 elapsed = block.timestamp - lastSyncAt;
+        if (elapsed == 0) return 0;
+        return _shareBp(stakeSecondsNow() / elapsed);
+    }
+
+    /// @notice Obergrenze, mit der eine Verteilung jetzt rechnen würde.
+    function nextCap() public view returns (uint256) {
+        return stakeSecondsNow() * maxWeeklyBp / (10_000 * 1 weeks);
+    }
+
+    function _shareBp(uint256 staked) internal view returns (uint256) {
         uint256 c = circulating();
-        if (totalStaked == 0 || c == 0) return 0;
-        if (totalStaked >= c) return 10_000;
-        return totalStaked * 10_000 / c;
+        if (staked == 0 || c == 0) return 0;
+        if (staked >= c) return 10_000;
+        return staked * 10_000 / c;
     }
 
     /// @notice Bereits verdiente, noch nicht abgeholte Belohnung (ohne noch nicht abgeholte Ausgabe).
@@ -177,6 +209,9 @@ contract BcusStaking is ReentrancyGuard {
     function _sync(address user) internal {
         if (address(emission) == address(0)) revert NotBound();
         _accrue(user);
+        // Zeitgewichteten Einsatz bis jetzt nachführen (vor jeder Änderung an totalStaked).
+        stakeSeconds += totalStaked * (block.timestamp - lastStakeUpdate);
+        lastStakeUpdate = block.timestamp;
         uint256 b = toBurn;
         if (b > 0) {
             toBurn = 0;
@@ -189,12 +224,13 @@ contract BcusStaking is ReentrancyGuard {
         // Was neu angekommen ist, egal wer mint() aufgerufen hat (auch direkt am Emissions-Contract).
         uint256 fresh = token.balanceOf(address(this)) - totalStaked - reserved;
         if (fresh > 0) {
-            // Der Anteil gilt für den Stand vor dieser Aktion (stake() zählt den neuen Einsatz erst
-            // danach), wer kurz vor der Ausgabe einsteigt, erhöht den Anteil also nicht.
-            uint256 part = fresh * stakerShareBp() / 10_000;
-            uint256 weeks_ = (block.timestamp - lastSyncAt + 1 weeks - 1) / 1 weeks;
-            if (weeks_ == 0) weeks_ = 1;
-            uint256 cap = totalStaked * maxWeeklyBp * weeks_ / 10_000;
+            // Anteil und Obergrenze aus dem zeitgewichteten Einsatz seit der letzten Verteilung
+            // (der Einsatz dieser Aktion zählt noch nicht): Wer nur kurz um die Verteilung herum
+            // stakt, zählt nur für diese kurze Zeit. Die Obergrenze ist sekundengenau, ohne
+            // Aufrunden auf ganze Wochen.
+            uint256 elapsed = block.timestamp - lastSyncAt;
+            uint256 part = elapsed == 0 ? 0 : fresh * _shareBp(stakeSeconds / elapsed) / 10_000;
+            uint256 cap = stakeSeconds * maxWeeklyBp / (10_000 * 1 weeks);
             if (part > cap) part = cap;
             uint256 rest = fresh - part;
             if (rest > 0) {
@@ -208,6 +244,7 @@ contract BcusStaking is ReentrancyGuard {
                 _notify(part);
             }
             lastSyncAt = block.timestamp;
+            stakeSeconds = 0;
         }
     }
 

@@ -136,8 +136,12 @@ contract StakingTest is Test {
         vm.prank(BOB);
         st.exit();                                       // sofort wieder raus
         assertLe(token.balanceOf(BOB), 100_000e18 + base / 1000);
+        // Bobs Sekunde zählt zeitgewichtet kaum: Anteil bleibt bei rund 100 von 100.100, Alice
+        // bekommt also ihren kleinen Anteil und nicht die ganze Woche (früher Befund B2).
         vm.warp(START + 2 weeks + 1);
-        assertNear(claim(ALICE), base, base / 1000);
+        uint256 a = claim(ALICE);
+        assertLe(a, base / 500);
+        assertNear(a, base * 100 / 100_100, base / 10_000);
         assertSolvent();
     }
 

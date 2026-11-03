@@ -32,13 +32,16 @@ contract S11Handler is S11Setup {
     uint256 public ghostMaxFactor = 1000;
     uint256 public ghostMinFactor = 1000;
     uint256 public syncsWithFresh;                   // Ausgaben, die beim Staking ankamen
+    uint256 public ghostParts;                       // Summe aller Staker-Teile seit Beginn
+    uint256 public ghostStakeIntegral;               // Summe Einsatz x Sekunden seit Beginn (eigene Rechnung)
+    uint256 public ghostIntegralAt;
     uint256 public reportsOk;
     uint256 public solutions;
     bool public ghostRetired;
 
     // ---------------------------------------------------------------- Verstöße
-    uint256 public capViolations;          // Staker-Teil > 1 % * aufgerundete Wochen * Einsatz
-    uint256 public shareViolations;        // Staker-Teil > Anteil am Umlauf
+    uint256 public capViolations;          // Staker-Teil > 1 %/Woche des zeitgewichteten Einsatzes
+    uint256 public shareViolations;        // Staker-Teil > zeitgewichteter Anteil am Umlauf
     uint256 public stepViolations;         // Faktor-Sprung > 0,05, Faktor außerhalb [0,5; 1,0], falsches Ziel
     uint256 public unexpectedReverts;      // eine Aktion, die gehen muss, ging nicht
     uint256 public unexpectedSuccess;      // eine Aktion, die scheitern muss, ging durch
@@ -52,6 +55,7 @@ contract S11Handler is S11Setup {
         actors[2] = address(0xC4A2);
         deployS11(actors[0]);
         now_ = block.timestamp;
+        ghostIntegralAt = now_;
         for (uint256 i = 0; i < 3; i++) {
             vmx.prank(actors[i]);
             token.approve(address(st), type(uint256).max);
@@ -80,6 +84,9 @@ contract S11Handler is S11Setup {
     function _begin() internal {
         vmx.warp(now_);
         calls++;
+        // totalStaked war seit der letzten Aktion unverändert
+        ghostStakeIntegral += st.totalStaked() * (now_ - ghostIntegralAt);
+        ghostIntegralAt = now_;
         uint256 done = (now_ - em.start()) / 1 weeks;
         uint256 f = em.factorMilli();
         for (uint256 e = ghostSettledEpochs; e < done; e++) {
@@ -94,18 +101,16 @@ contract S11Handler is S11Setup {
         uint256 reserved;
         uint256 sent;
         uint256 burned;
-        uint256 totalStaked;
+        uint256 cap;
         uint256 shareBp;
-        uint256 lastSync;
     }
 
     function _snap() internal view returns (Snap memory s) {
         s.reserved = st.reserved();
         s.sent = st.sentToMining();
         s.burned = st.burned();
-        s.totalStaked = st.totalStaked();
-        s.shareBp = st.stakerShareBp();
-        s.lastSync = st.lastSyncAt();
+        s.cap = st.nextCap();
+        s.shareBp = st.nextShareBp();
     }
 
     /// Nach einer Staking-Aktion: Was ist bei dieser Synchronisation an die Staker gegangen, und
@@ -115,9 +120,8 @@ contract S11Handler is S11Setup {
         uint256 rest = st.sentToMining() - b.sent;
         if (part + rest == 0) return;
         syncsWithFresh++;
-        uint256 weeks_ = (now_ - b.lastSync + 1 weeks - 1) / 1 weeks;
-        if (weeks_ == 0) weeks_ = 1;
-        if (part > b.totalStaked * st.maxWeeklyBp() * weeks_ / 10_000) {
+        ghostParts += part;
+        if (part > b.cap) {
             capViolations++;
             _violate("Staker-Teil ueber dem Deckel");
         }
