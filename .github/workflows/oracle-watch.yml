@@ -24,8 +24,8 @@ jobs:
       # Zurzeit das Testnetz (Base Sepolia). Nach dem Mainnet-Deploy diese drei Werte ersetzen:
       # RPC https://mainnet.base.org, Orakel-Adresse und Deploy-Block aus dem Deploy.
       RPC: https://sepolia.base.org
-      ORACLE: "0xE9883ACF0Decf9e360ACd0C215AC15BAAA519c88"
-      FROM_BLOCK: "50613715"
+      ORACLE: "0x41EeAA994F3bff38B8e0c7beA76B0e36D2a80994"
+      FROM_BLOCK: "54100167"
       NTFY_URL: ${{ secrets.NTFY_URL }}
     steps:
       - uses: actions/checkout@v4
