@@ -1,0 +1,5 @@
+{
+  "name": "bloodcoin-mods",
+  "owner": { "name": "Michel Wagner" },
+  "plugins": [{ "name": "bloodcoin-register", "source": "./bloodcoin-register" }]
+}

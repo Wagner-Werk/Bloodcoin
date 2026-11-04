@@ -1,0 +1,9 @@
+{
+  "name": "bloodcoin-register",
+  "version": "0.1.0",
+  "description": "Das Register: Mainnet-Tore, Countdown und Serverstatus neben dem Chat, dazu ein Wächter gegen Mainnet-Deploy, Schlüssel-Ausgabe und Löschen von Backups.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Michel Wagner"
+  }
+}
