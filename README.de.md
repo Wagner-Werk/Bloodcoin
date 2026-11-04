@@ -8,7 +8,7 @@ Stand: 11.10.2026. Entwurf, **nicht auditiert, nicht deployt**. Vor echtem Geld:
 |---|---|
 | `src/BloodcoinToken.sol` | ERC-20 "Bloodcoin" (BCUS), 18 Nachkommastellen, harte Grenze 21 Mio. Kein Besitzer, keine Pause, keine Sperrliste. Nur der Emissions-Contract kann neue Coins erzeugen. |
 | `src/MortalityEmission.sol` | Gibt jede Woche neue BCUS aus: Halbierungsplan × Sterbe-Faktor (Übersterblichkeit, siehe `FAKTOR.md`). Deployt den Token selbst. Kein Besitzer, alles unveränderlich. |
-| `src/BcusStaking.sol` | Bekommt die Hälfte aller neuen BCUS. Wer BCUS hier sperrt, bekommt sie anteilig, gleichmäßig über 7 Tage ausgezahlt. Ein- und Aussteigen jederzeit, kein Besitzer. |
+| `src/BcusStaking.sol` | Bekommt die Hälfte aller neuen BCUS. Abgerechnet wird pro Emissions-Woche: Jeder bekommt seinen Anteil nach eigenem Einsatz mal Sekunden in genau dieser Woche. Ein- und Aussteigen jederzeit, kein Besitzer. |
 | `src/BcusMining.sol` | Bekommt die andere Hälfte. Jeder kann BCUS schürfen (Proof of Work wie bei Bitcoin, keccak256): Lösung finden, `mine(nonce)` aufrufen. Die Belohnung richtet sich nach der Zeit seit der letzten Lösung (Anteil Zeit/Woche am Vorrat, höchstens 40 Minuten), nicht nach dem Tempo: Wer mit viel Rechenleistung Sekunden-Lösungen findet, bekommt fast nichts, und nach einer Pause gibt es keinen Topf. Schwierigkeit passt sich selbst an (Ziel: alle 10 Minuten eine Lösung). Kein Besitzer. |
 | `miner/mine.py` | Einfacher CPU-Miner (Python + `cast`). |
 | `src/CreMortalityOracle.sol` | Nimmt die CDC-Zahlen von Chainlink CRE entgegen (`onReport`). Nur der Chainlink-Forwarder darf melden, nach `pinWorkflow` nur noch genau ein Workflow. |
@@ -36,14 +36,22 @@ Stand: 11.10.2026. Entwurf, **nicht auditiert, nicht deployt**. Vor echtem Geld:
   Eine abgelehnte oder fehlerhafte Antwort ändert nichts.
 - **Abfrage** macht der CRE-Workflow selbst, jeden Montag 12:00 UTC. **Abholung** (`mint`) darf jeder
   aufrufen. Neue Coins gehen immer an den Staking-Contract.
-- **Staking:** Neue Coins werden nicht auf einen Schlag verteilt, sondern über die folgenden
-  7 Tage gestreamt (bewährtes Verfahren von Synthetix). Wer kurz vor einer Ausgabe mit viel Geld
-  einsteigt und gleich wieder raus geht, bekommt so gut wie nichts (Test
-  `testFlashStakerGetsAlmostNothing`). Läuft der Strom, während niemand gestakt hat, wird er
-  verbrannt (an `0x…dEaD`) und nicht aufgehoben. Früher sammelte sich dieser Teil für den ersten
-  Staker an. Weil beim Deploy alle Start-BCUS im FounderLock liegen und sonst niemand BCUS
-  hat, wäre das zwangsläufig der Gründer gewesen, mit Millionen BCUS
-  (`test/FounderScenario.t.sol`).
+- **Staking:** Abgerechnet wird in festen Wochen, die an den Grenzen des Emissions-Contracts
+  liegen. Wann jemand den Contract aufruft, verschiebt keine Grenze. Am Wochenende bekommt jeder
+  seinen Anteil nach eigenem Einsatz mal Sekunden in genau dieser Woche. Wer erst danach einsteigt,
+  bekommt aus dieser Woche nichts; wer mitten in der Woche aussteigt, behält seinen Anspruch.
+  Wer kurz vor der Grenze mit viel Geld einsteigt und gleich wieder raus geht, bekommt so gut wie
+  nichts (Test `testFlashStakerGetsAlmostNothing`). Hat in einer Woche niemand gestakt, geht ihr
+  Staking-Teil ans Mining. Früher sammelte sich dieser Teil für den ersten Staker an; weil beim
+  Deploy alle Start-BCUS im FounderLock liegen, wäre das zwangsläufig der Gründer gewesen
+  (`test/FounderScenario.t.sol`). Umbau nach den KI-Prüfungen vom 4.11.2026 (Mistral, Grok,
+  ChatGPT), siehe Tests `testLateJoinerGetsNothingFromClosedWeek`, `testLeaverKeepsClaimNobodyElseGetsIt`,
+  `testQuietWeeksGoToThoseWhoStaked`, `testPullTimingDoesNotMatter`.
+- **Bekannte Restpunkte (KI-Prüfung Runde 2):** Bleibt eine ganze Woche ohne Aufruf, werden
+  Wochen zusammen abgerechnet; ihr 1-%-Deckel wird dann gemeinsam angewendet (im Mittel weiter
+  höchstens 1 % pro Woche). Der Umlauf für die Anteils-Regel wird beim Abschluss gelesen, nicht
+  exakt an der Grenze. Beides ist klein, solange kurz nach jeder Wochengrenze jemand `pull()`
+  aufruft; das macht der Server stündlich, sobald eine Woche fällig ist.
 
 ## Entscheidungen, die ich als Standard gesetzt habe
 

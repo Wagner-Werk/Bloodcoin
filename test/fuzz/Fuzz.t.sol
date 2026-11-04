@@ -240,19 +240,20 @@ contract S11FuzzTest is S11Setup {
         vmx.assertEq(st.stakedOf(ALICE), 0, "Rest-Einsatz");
     }
 
-    /// Ein Staker allein mit allem Umlauf: pro Synchronisation nie mehr als 1 % mal
-    /// aufgerundete Wochen seit der letzten (so steht es im Code).
-    function testFuzz_CapPerSyncAsCoded(uint256 amt, uint256 wait) public {
+    /// Ein Staker allein: Was eine Abrechnung den Stakern gibt, ist nie mehr als 1 % pro Woche
+    /// seines Einsatzes, sekundengenau bis zur echten Wochengrenze gerechnet.
+    function testFuzz_CapPerCloseExact(uint256 amt, uint256 wait) public {
         uint256 bal = fundAlice();
         amt = clamp(amt, 1e18, bal);
         vmx.prank(ALICE);
         st.stake(amt);
-        uint256 last = st.lastSyncAt();
+        uint256 t0 = block.timestamp;
         uint256 r0 = st.reserved();
         vmx.warp(block.timestamp + 1 + wait % (10 weeks));
         st.pull();
         uint256 part = st.reserved() - r0;
-        uint256 weeks_ = (block.timestamp - last + 1 weeks - 1) / 1 weeks;
-        vmx.assertLe(part, amt * 100 * weeks_ / 10_000, "Deckel ueberschritten");
+        (uint256 end,,) = st.periods(st.current());
+        if (end <= t0) vmx.assertEq(part, 0, "Verteilung ohne neue Woche");
+        else vmx.assertLe(part, amt * (end - t0) / (100 * 1 weeks), "Deckel ueberschritten");
     }
 }

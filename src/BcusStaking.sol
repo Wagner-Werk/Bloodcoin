@@ -12,52 +12,52 @@ interface IEmission {
     function initialHolder() external view returns (address);
     function mint() external returns (uint256);
     function settledEpochs() external view returns (uint256);
+    function completedEpochs() external view returns (uint256);
+    function start() external view returns (uint256);
+    function EPOCH() external view returns (uint256);
 }
 
 /// @title BCUS-Staking
-/// @notice Wer BCUS hier sperrt, bekommt die wöchentlich neu ausgegebenen BCUS anteilig.
-///         Neue Coins werden nicht auf einen Schlag verteilt, sondern gleichmäßig über die
-///         folgenden 7 Tage ausgezahlt (Verfahren von Synthetix StakingRewards). Wer nur kurz
-///         vor einer Ausgabe einsteigt, bekommt deshalb nur seinen zeitlichen Anteil.
+/// @notice Wer BCUS hier sperrt, bekommt die wöchentlich neu ausgegebenen BCUS anteilig, und zwar
+///         genau nach seinem eigenen Einsatz in genau der Emissions-Woche, aus der die Coins stammen.
 ///
-///         Anteils-Regel: Staker bekommen von jeder Ausgabe nur den Teil, der ihrem Anteil an den
-///         frei umlaufenden Coins entspricht (gestaktes BCUS geteilt durch Umlauf, höchstens 1).
-///         Den Rest dieser Hälfte bekommt das Mining. Wer also die Hälfte aller umlaufenden Coins
-///         stakt, bekommt die Hälfte der Staking-Ausgabe, wer 1 % stakt, bekommt 1 %. Ein einzelner
-///         früher Staker kann deshalb nicht die ganze Staking-Hälfte abgreifen.
+///         Abrechnungs-Woche: Die Wochen liegen fest auf den Grenzen des Emissions-Contracts
+///         (start + n * 1 Woche). Wann jemand den Contract aufruft, verschiebt keine Grenze. Haben
+///         mehrere Wochen lang alle geschwiegen, werden diese Wochen zusammen als eine Abrechnung
+///         behandelt (gleiche Regeln, nur länger).
 ///
-///         Gezählt wird dabei der zeitgewichtete Einsatz im laufenden Fenster (seit der ersten
-///         Verteilung nach der letzten Emissions-Woche), nicht der
-///         Einsatz im Augenblick der Verteilung: Wer eine Woche lang 100 BCUS gestakt hat, zählt mit
-///         100; wer 100.000 BCUS nur sechs Sekunden um die Verteilung herum stakt, zählt mit rund 1.
-///         Kurzes Staken vor der Verteilung hebt also weder Anteil noch Obergrenze. Zum Umlauf zählt
-///         nicht: der FounderLock (noch nicht freigegebene Gründer-Coins), der Mining-Vorrat, die
-///         Verbrennungsadresse und nicht abgeholte Staking-Belohnungen. Gestakte Coins zählen mit.
+///         Topf einer Woche: Was in der Woche ankommt (Staking-Hälfte der Emission und allfällige
+///         Spenden), wird am Wochenende geteilt.
+///         - Anteils-Regel: Staker bekommen den Teil, der ihrem Anteil an den frei umlaufenden Coins
+///           entspricht (durchschnittlicher Einsatz in der Woche geteilt durch Umlauf, höchstens 1).
+///         - Obergrenze: höchstens 1 % des durchschnittlichen Einsatzes pro Woche.
+///         - Der Rest geht ans Mining.
 ///
-///         Läuft der Strom, während niemand gestakt hat, wird dieser Teil verbrannt (an BURN
-///         geschickt) und nicht aufgehoben. Sonst bekäme der erste Staker alles, was bis dahin
-///         angekommen ist.
+///         Verteilung des Topfs: Jeder Staker bekommt so viel vom Topf, wie sein Einsatz mal Sekunden
+///         in dieser Woche an der Summe aller Einsätze mal Sekunden ausmacht. Wer erst nach der Woche
+///         einsteigt, bekommt aus ihr nichts. Wer mitten in der Woche aussteigt, behält seinen Anspruch
+///         für die Zeit, in der er gestakt war, und kann ihn nach dem Wochenende abholen. Es gibt
+///         keinen nachlaufenden Auszahlungsstrom mehr: Der Anspruch steht mit dem Wochenabschluss fest.
+///
+///         Hat in einer Woche niemand gestakt, geht der ganze Topf ans Mining.
+///
+///         Zum Umlauf zählt nicht: der FounderLock (noch nicht freigegebene Gründer-Coins), der
+///         Mining-Vorrat, die Verbrennungsadresse und Belohnungen in diesem Contract. Gestakte
+///         Coins zählen mit.
 ///
 ///         Einzahlen, Abheben und Abholen geht jederzeit und ohne Sperrfrist. Es gibt keinen
-///         Besitzer. `bind` kann nur der Deployer genau einmal aufrufen.
+///         Besitzer. `bind` kann nur der Deployer genau einmal aufrufen, bevor die erste
+///         Emissions-Woche abgelaufen ist.
 contract BcusStaking is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
-    uint256 public constant DURATION = 7 days;
-    /// Übliche Verbrennungsadresse; zu ihr gibt es keinen Schlüssel.
-    /// Obergrenze für die Staker: höchstens 1 % der gestakten Menge pro Woche, sekundengenau über
-    /// die Zeit seit der letzten Verteilung gerechnet. Technische Grenze, kein Versprechen. Was
-    /// darüber liegt, geht ans Mining.
+    /// Obergrenze für die Staker: höchstens 1 % des durchschnittlichen Einsatzes pro Woche.
+    /// Technische Grenze, kein Versprechen. Was darüber liegt, geht ans Mining. Es gibt keinen
+    /// Setter; der Wert ist nur für Test-Ableitungen nicht `constant`.
     uint256 public maxWeeklyBp = 100;
-    uint256 public lastSyncAt;
-    /// Zeitfenster für Anteil und Obergrenze: beginnt bei lastSyncAt, mit der ersten Verteilung nach
-    /// einer neuen Emissions-Woche. Spenden oder Rundungsreste starten kein neues Fenster.
-    /// stakeSeconds = Summe aus Einsatz mal Sekunden im Fenster (bis lastStakeUpdate),
-    /// paidInWindow = was im Fenster schon an die Staker ging (zählt gegen die Obergrenze).
-    uint256 public stakeSeconds;
-    uint256 public lastStakeUpdate;
-    uint256 public paidInWindow;
-    uint256 public seenEpochs;
+    /// Rechengenauigkeit für die Belohnung pro Einsatz-Sekunde.
+    uint256 internal constant PREC = 1e30;
+    /// Übliche Verbrennungsadresse; zu ihr gibt es keinen Schlüssel.
     address public constant BURN = 0x000000000000000000000000000000000000dEaD;
 
     address private immutable deployer;
@@ -65,33 +65,46 @@ contract BcusStaking is ReentrancyGuard {
     IERC20 public token;
     address public mining;                  // bekommt den Teil, den Staker nicht beanspruchen
     address public founderLock;             // hält die noch gesperrten Gründer-Coins
+    uint256 public epochStart;              // Beginn der Emission (Grenze der Woche 0)
+    uint256 public epochLength;             // 1 Woche
 
     uint256 public totalStaked;
     mapping(address => uint256) public stakedOf;
 
-    uint256 public rewardRate;              // BCUS pro Sekunde (18 Dezimalen)
-    uint256 public periodFinish;
-    uint256 public lastUpdate;
-    uint256 public rewardPerTokenStored;
-    uint256 public undistributed;           // Rundungsrest, fließt in die nächste Ausgabe
-    uint256 public burned;                  // Summe, die ohne Staker verbrannt wurde
-    uint256 public sentToMining;            // Summe, die wegen der Anteils-Regel ans Mining ging
-    uint256 private toBurn;                 // in _accrue gesammelt, in _sync verbrannt
+    // ---- Abrechnungs-Wochen ("Perioden"). Periode `current` läuft noch.
+    struct Period {
+        uint256 start;      // Beginn (eine Emissions-Grenze)
+        uint256 index;      // aufsummierte Belohnung pro Einsatz-Einheit bis zum Beginn (mal PREC)
+        uint256 rate;       // Belohnung pro Einsatz-Einheit und Sekunde in dieser Periode (mal PREC)
+    }
+    mapping(uint256 => Period) public periods;
+    uint256 public current;                 // Nummer der laufenden Periode
+    uint256 public seenEpochs;              // so viele Emissions-Wochen sind abgeschlossen
+    uint256 public stakeSeconds;            // Summe Einsatz mal Sekunden in der laufenden Periode bis lastStakeUpdate
+    uint256 public lastStakeUpdate;
+
+    // ---- pro Nutzer
+    mapping(address => uint256) public userPeriod;       // Periode der letzten Aktion
+    mapping(address => uint256) public userLastTime;     // Zeit der letzten Aktion
+    mapping(address => uint256) public userStakeSeconds; // eigener Einsatz mal Sekunden in userPeriod bis userLastTime
+    mapping(address => uint256) public rewards;          // fest zugeteilt, noch nicht abgeholt
+
     uint256 public reserved;                // alle BCUS im Contract, die Belohnung sind (nicht Einsatz)
-    mapping(address => uint256) public paidPerToken;
-    mapping(address => uint256) public rewards;
+    uint256 public sentToMining;            // Summe, die wegen Anteils-Regel/Obergrenze ans Mining ging
+    uint256 public burned;                  // Summe, die verbrannt wurde (nur ohne Mining-Contract)
 
     event Bound(address emission, address token);
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user, uint256 amount);
     event RewardPaid(address indexed user, uint256 amount);
-    event RewardAdded(uint256 amount, uint256 rewardRate, uint256 periodFinish);
-    event Burned(uint256 amount);
+    event PeriodClosed(uint256 indexed period, uint256 end, uint256 stakeSeconds, uint256 toStakers, uint256 rest);
     event ToMining(uint256 amount);
+    event Burned(uint256 amount);
 
     error AlreadyBound();
     error NotBound();
     error WrongRecipient();
+    error TooLate();
     error ZeroAmount();
     error InsufficientStake();
 
@@ -101,26 +114,22 @@ contract BcusStaking is ReentrancyGuard {
 
     function bind(address emission_) external {
         if (msg.sender != deployer || address(emission) != address(0)) revert AlreadyBound();
-        if (IEmission(emission_).recipient() != address(this)) revert WrongRecipient();
-        emission = IEmission(emission_);
-        token = IEmission(emission_).token();
-        mining = IEmission(emission_).miner();
-        founderLock = IEmission(emission_).initialHolder();
-        lastSyncAt = block.timestamp;
+        IEmission e = IEmission(emission_);
+        if (e.recipient() != address(this)) revert WrongRecipient();
+        // Woche 0 muss noch laufen, sonst fehlte der Einsatz für bereits abgelaufene Wochen.
+        if (e.completedEpochs() != 0) revert TooLate();
+        emission = e;
+        token = e.token();
+        mining = e.miner();
+        founderLock = e.initialHolder();
+        epochStart = e.start();
+        epochLength = e.EPOCH();
+        periods[0].start = epochStart;
         lastStakeUpdate = block.timestamp;
         emit Bound(emission_, address(token));
     }
 
     // ------------------------------------------------------------------ Ansichten
-
-    function lastTimeRewardApplicable() public view returns (uint256) {
-        return block.timestamp < periodFinish ? block.timestamp : periodFinish;
-    }
-
-    function rewardPerToken() public view returns (uint256) {
-        if (totalStaked == 0) return rewardPerTokenStored;
-        return rewardPerTokenStored + (lastTimeRewardApplicable() - lastUpdate) * rewardRate * 1e18 / totalStaked;
-    }
 
     /// @notice Frei umlaufende Coins: alles Ausgegebene ohne FounderLock, Mining-Vorrat,
     ///         Verbrennungsadresse und die Belohnungen in diesem Contract (gestaktes BCUS zählt mit).
@@ -132,28 +141,40 @@ contract BcusStaking is ReentrancyGuard {
     }
 
     /// @notice Anteil der jetzt gestakten Coins am Umlauf in Basispunkten (10000 = alles).
-    ///         Für die Verteilung zählt der zeitgewichtete Einsatz, siehe nextShareBp().
     function stakerShareBp() public view returns (uint256) {
         return _shareBp(totalStaked);
     }
 
-    /// @notice Zeitgewichteter Einsatz seit der letzten Verteilung, bis jetzt.
+    /// @notice Einsatz mal Sekunden in der laufenden Periode, bis jetzt.
     function stakeSecondsNow() public view returns (uint256) {
         return stakeSeconds + totalStaked * (block.timestamp - lastStakeUpdate);
     }
 
-    /// @notice Anteil, mit dem eine Verteilung jetzt rechnen würde: durchschnittlicher Einsatz
-    ///         seit der letzten Verteilung geteilt durch den Umlauf.
+    /// @notice Anteil, mit dem die laufende Periode jetzt abgerechnet würde.
     function nextShareBp() public view returns (uint256) {
-        uint256 elapsed = block.timestamp - lastSyncAt;
+        uint256 elapsed = block.timestamp - periods[current].start;
         if (elapsed == 0) return 0;
         return _shareBp(stakeSecondsNow() / elapsed);
     }
 
-    /// @notice Was die Staker in diesem Fenster jetzt noch höchstens bekommen könnten.
+    /// @notice Obergrenze für die Staker in der laufenden Periode, bis jetzt.
     function nextCap() public view returns (uint256) {
-        uint256 cap = stakeSecondsNow() * maxWeeklyBp / (10_000 * 1 weeks);
-        return cap > paidInWindow ? cap - paidInWindow : 0;
+        return stakeSecondsNow() * maxWeeklyBp / (10_000 * epochLength);
+    }
+
+    /// @notice Fest zugeteilte, noch nicht abgeholte Belohnung (aus bereits abgeschlossenen Wochen).
+    ///         Der Anteil an der laufenden Woche steht erst nach ihrem Ende fest.
+    function earned(address user) public view returns (uint256) {
+        uint256 p = userPeriod[user];
+        if (p >= current) return rewards[user];
+        return rewards[user] + _credit(user, p);
+    }
+
+    /// @notice Eigener Einsatz mal Sekunden in der laufenden Woche (Grundlage für den nächsten Anteil).
+    function userStakeSecondsNow(address user) external view returns (uint256) {
+        uint256 s = stakedOf[user];
+        if (userPeriod[user] < current) return s * (block.timestamp - periods[current].start);
+        return userStakeSeconds[user] + s * (block.timestamp - userLastTime[user]);
     }
 
     function _shareBp(uint256 staked) internal view returns (uint256) {
@@ -163,9 +184,13 @@ contract BcusStaking is ReentrancyGuard {
         return staked * 10_000 / c;
     }
 
-    /// @notice Bereits verdiente, noch nicht abgeholte Belohnung (ohne noch nicht abgeholte Ausgabe).
-    function earned(address user) public view returns (uint256) {
-        return stakedOf[user] * (rewardPerToken() - paidPerToken[user]) / 1e18 + rewards[user];
+    /// Anspruch eines Nutzers aus der abgeschlossenen Periode p und allen folgenden abgeschlossenen
+    /// Perioden bis `current` (sein Einsatz war seit userLastTime unverändert).
+    function _credit(address user, uint256 p) internal view returns (uint256) {
+        uint256 s = stakedOf[user];
+        Period storage next = periods[p + 1];
+        uint256 inP = userStakeSeconds[user] + s * (next.start - userLastTime[user]);
+        return inP * periods[p].rate / PREC + s * (periods[current].index - next.index) / PREC;
     }
 
     // ------------------------------------------------------------------ Aktionen
@@ -205,9 +230,9 @@ contract BcusStaking is ReentrancyGuard {
         claim();
     }
 
-    /// @notice Holt fällige neue BCUS beim Emissions-Contract ab und startet ihre Auszahlung über
-    ///         7 Tage. Darf jeder aufrufen; passiert auch bei jedem Stake, Abheben und Abholen.
-    ///         Was ohne Staker geflossen ist, wird dabei verbrannt.
+    /// @notice Holt fällige neue BCUS beim Emissions-Contract ab und schließt abgelaufene Wochen ab.
+    ///         Darf jeder aufrufen; passiert auch bei jedem Stake, Abheben und Abholen. Wann das
+    ///         passiert, ändert an den Beträgen nichts.
     function pull() external nonReentrant {
         _sync(address(0));
     }
@@ -216,81 +241,71 @@ contract BcusStaking is ReentrancyGuard {
 
     function _sync(address user) internal {
         if (address(emission) == address(0)) revert NotBound();
-        _accrue(user);
-        // Zeitgewichteten Einsatz bis jetzt nachführen (vor jeder Änderung an totalStaked).
+        emission.mint();
+        uint256 settled = emission.settledEpochs();
+        if (settled > seenEpochs) _close(settled);
+        // Einsatz mal Sekunden der laufenden Periode bis jetzt nachführen (vor jeder Änderung am Einsatz).
         stakeSeconds += totalStaked * (block.timestamp - lastStakeUpdate);
         lastStakeUpdate = block.timestamp;
-        uint256 b = toBurn;
-        if (b > 0) {
-            toBurn = 0;
-            reserved -= b;
-            burned += b;
-            token.safeTransfer(BURN, b);
-            emit Burned(b);
-        }
-        emission.mint();
-        // Was neu angekommen ist, egal wer mint() aufgerufen hat (auch direkt am Emissions-Contract).
+        if (user != address(0)) _updateUser(user);
+    }
+
+    /// Schließt die laufende Periode an der Emissions-Grenze `settled` ab und verteilt ihren Topf.
+    function _close(uint256 settled) internal {
+        uint256 end = epochStart + settled * epochLength;
+        // Seit lastStakeUpdate (vor der Grenze) war der Einsatz unverändert.
+        uint256 ss = stakeSeconds + totalStaked * (end - lastStakeUpdate);
+        Period storage p = periods[current];
+        uint256 len = end - p.start;
+
         uint256 fresh = token.balanceOf(address(this)) - totalStaked - reserved;
-        if (fresh > 0) {
-            // Anteil und Obergrenze aus dem zeitgewichteten Einsatz seit der letzten Verteilung
-            // (der Einsatz dieser Aktion zählt noch nicht): Wer nur kurz um die Verteilung herum
-            // stakt, zählt nur für diese kurze Zeit. Die Obergrenze ist sekundengenau, ohne
-            // Aufrunden auf ganze Wochen.
-            uint256 elapsed = block.timestamp - lastSyncAt;
-            uint256 part = elapsed == 0 ? 0 : fresh * _shareBp(stakeSeconds / elapsed) / 10_000;
-            uint256 cap = stakeSeconds * maxWeeklyBp / (10_000 * 1 weeks);
-            cap = cap > paidInWindow ? cap - paidInWindow : 0;
+        uint256 part;
+        if (ss > 0 && fresh > 0) {
+            // Anteil exakt (durchschnittlicher Einsatz / Umlauf), ohne Abrunden auf Basispunkte;
+            // sonst verlören kleine Staker bis zu einem ganzen Basispunkt (KI-Prüfung Runde 2, F-03).
+            uint256 avg = ss / len;
+            uint256 c = circulating();
+            part = avg >= c ? fresh : fresh * avg / c;
+            uint256 cap = ss * maxWeeklyBp / (10_000 * epochLength);
             if (part > cap) part = cap;
-            paidInWindow += part;
-            uint256 rest = fresh - part;
-            if (rest > 0) {
-                address to = mining == address(0) ? BURN : mining;
+        }
+        uint256 rate = ss > 0 ? part * PREC / ss : 0;
+        p.rate = rate;
+        Period storage n = periods[current + 1];
+        n.start = end;
+        n.index = p.index + rate * len;
+        current += 1;
+        seenEpochs = settled;
+        stakeSeconds = 0;
+        lastStakeUpdate = end;
+        reserved += part;
+
+        uint256 rest = fresh - part;
+        emit PeriodClosed(current - 1, end, ss, part, rest);
+        if (rest > 0) {
+            if (mining == address(0)) {
+                burned += rest;
+                token.safeTransfer(BURN, rest);
+                emit Burned(rest);
+            } else {
                 sentToMining += rest;
-                token.safeTransfer(to, rest);
+                token.safeTransfer(mining, rest);
                 emit ToMining(rest);
             }
-            if (part > 0) {
-                reserved += part;
-                _notify(part);
-            }
-            // Neues Fenster nur, wenn eine neue Emissions-Woche dabei war. Sonst könnte jemand mit
-            // einer Spende von 1 wei das Fenster kurz vor der Ausgabe zurücksetzen und die
-            // Obergrenze für die ganze Woche auf wenige Sekunden drücken.
-            uint256 settled = emission.settledEpochs();
-            if (settled > seenEpochs) {
-                seenEpochs = settled;
-                lastSyncAt = block.timestamp;
-                stakeSeconds = 0;
-                paidInWindow = 0;
-            }
         }
     }
 
-    function _accrue(address user) internal {
-        uint256 applicable = lastTimeRewardApplicable();
-        if (totalStaked == 0) {
-            // Ohne Staker gehört der Strom niemandem; er wird verbrannt statt für den ersten Staker
-            // aufgehoben.
-            if (applicable > lastUpdate) toBurn += (applicable - lastUpdate) * rewardRate;
+    function _updateUser(address user) internal {
+        uint256 p = userPeriod[user];
+        uint256 s = stakedOf[user];
+        if (p < current) {
+            uint256 c = _credit(user, p);
+            if (c > 0) rewards[user] += c;
+            userPeriod[user] = current;
+            userStakeSeconds[user] = s * (block.timestamp - periods[current].start);
         } else {
-            rewardPerTokenStored = rewardPerToken();
+            userStakeSeconds[user] += s * (block.timestamp - userLastTime[user]);
         }
-        lastUpdate = applicable;
-        if (user != address(0)) {
-            rewards[user] = earned(user);
-            paidPerToken[user] = rewardPerTokenStored;
-        }
-    }
-
-    function _notify(uint256 amount) internal {
-        uint256 add = amount + undistributed;
-        undistributed = 0;
-        if (block.timestamp < periodFinish) add += (periodFinish - block.timestamp) * rewardRate;
-        rewardRate = add / DURATION;
-        // Rundungsrest bleibt für die nächste Runde erhalten.
-        undistributed += add - rewardRate * DURATION;
-        lastUpdate = block.timestamp;
-        periodFinish = block.timestamp + DURATION;
-        emit RewardAdded(amount, rewardRate, periodFinish);
+        userLastTime[user] = block.timestamp;
     }
 }

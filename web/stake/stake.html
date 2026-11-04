@@ -143,7 +143,7 @@ input:focus{outline:none; border-color:var(--blood); box-shadow:0 0 0 3px rgba(1
   <div class="paper" id="paper">
     <div class="head"><span class="eb">Scroll · Staking</span><h1>Stake BCUS</h1><span class="note" id="net">Not connected</span></div>
 
-    <p class="lead" data-ink style="--d:.5s">Each week new BCUS are created. How many depends on the mortality factor reported by the <a href="https://bloodcoin-us.com/oracle">oracle</a>. Half of them go to public mining, the other half is offered to stakers here. Stakers receive their share of the circulating supply, at most 1% of their stake per week, paid out evenly over the following seven days. Whatever is above that goes to the miners. This is a technical limit, not a promise of any return.</p>
+    <p class="lead" data-ink style="--d:.5s">Each week new BCUS are created. How many depends on the mortality factor reported by the <a href="https://bloodcoin-us.com/oracle">oracle</a>. Half of them go to public mining, the other half is offered to stakers here. Stakers receive their share of the circulating supply, at most 1% of their stake per week. At the end of each week, every staker's portion is fixed by their own stake multiplied by the time it was in during that week, and can be collected right away. Whatever is above that goes to the miners. This is a technical limit, not a promise of any return.</p>
 
     <div id="notlive" class="disc" hidden>The staking contract is not deployed on this network yet. This page will work as soon as it is.</div>
 
@@ -184,7 +184,7 @@ input:focus{outline:none; border-color:var(--blood); box-shadow:0 0 0 3px rgba(1
       <div class="steps">
         <div><b class="n">I</b><h3>Stake</h3><p>You move BCUS into the staking contract. They stay yours and you can take them back at any time.</p></div>
         <div><b class="n">II</b><h3>Weekly emission</h3><p>Once a week the emission contract creates new BCUS. Half of them are offered to this pool; stakers get their share of the circulating supply, at most 1% of their stake per week, and the rest goes to the miners.</p></div>
-        <div><b class="n">III</b><h3>Over seven days</h3><p>The new BCUS are paid out evenly over the next seven days, split by each staker's share of the pool.</p></div>
+        <div><b class="n">III</b><h3>At week's end</h3><p>When the week ends, the new BCUS are split by each staker's stake multiplied by the time it was in during that week. Joining later earns nothing from a week that has already ended.</p></div>
         <div><b class="n">IV</b><h3>Nobody staked</h3><p>Whatever arrives while nobody has anything staked is burned or goes to the miners. Nobody collects it later.</p></div>
       </div>
     </div>
