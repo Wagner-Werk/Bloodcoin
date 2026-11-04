@@ -47,6 +47,11 @@ Stand: 11.10.2026. Entwurf, **nicht auditiert, nicht deployt**. Vor echtem Geld:
   (`test/FounderScenario.t.sol`). Umbau nach den KI-Prüfungen vom 4.11.2026 (Mistral, Grok,
   ChatGPT), siehe Tests `testLateJoinerGetsNothingFromClosedWeek`, `testLeaverKeepsClaimNobodyElseGetsIt`,
   `testQuietWeeksGoToThoseWhoStaked`, `testPullTimingDoesNotMatter`.
+- **Bekannte Restpunkte (KI-Prüfung Runde 2):** Bleibt eine ganze Woche ohne Aufruf, werden
+  Wochen zusammen abgerechnet; ihr 1-%-Deckel wird dann gemeinsam angewendet (im Mittel weiter
+  höchstens 1 % pro Woche). Der Umlauf für die Anteils-Regel wird beim Abschluss gelesen, nicht
+  exakt an der Grenze. Beides ist klein, solange kurz nach jeder Wochengrenze jemand `pull()`
+  aufruft; das macht der Server stündlich, sobald eine Woche fällig ist.
 
 ## Entscheidungen, die ich als Standard gesetzt habe
 

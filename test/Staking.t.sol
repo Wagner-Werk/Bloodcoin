@@ -232,8 +232,8 @@ contract StakingTest is Test {
         vm.warp(START + 3 weeks + 1);
         stake(BOB, 100_000e18);                          // erster Aufruf nach drei stillen Wochen
         assertEq(st.earned(BOB), 0);
-        // Umlauf 100.100, Alice 100 gestakt: Anteil 9 Basispunkte (abgerundet) von 3 Wochen.
-        assertNear(claim(ALICE), 3 * base * 9 / 10_000, 1e12);
+        // Umlauf 100.100, Alice 100 gestakt: Anteil exakt 100/100.100 von 3 Wochen.
+        assertNear(claim(ALICE), 3 * base * 100 / 100_100, 1e12);
         assertSolvent();
     }
 
@@ -247,6 +247,20 @@ contract StakingTest is Test {
         vm.warp(START + 2 weeks + 60);
         st.pull();                                       // schliesst Woche 2 ab
         assertNear(claim(ALICE), 2 * base, 1e12);
+        assertSolvent();
+    }
+
+    /// KI-Prüfung Runde 2 (F-03): Der Anteil wird nicht auf Basispunkte abgerundet. Ein Staker mit
+    /// weniger als 0,01 % des Umlaufs bekommt trotzdem seinen genauen Anteil.
+    function testShareBelowOneBasisPointNotRoundedAway() public {
+        trim(ALICE, 1e18);
+        trim(BOB, 20_000e18);                            // Alice: 1 von 20.001, also rund 0,5 Basispunkte
+        stake(ALICE, 1e18);
+        vm.warp(START + 1 weeks);
+        st.pull();
+        uint256 got = claim(ALICE);
+        assertTrue(got > 0);
+        assertNear(got, base * 1 / 20_001, 1e12);
         assertSolvent();
     }
 

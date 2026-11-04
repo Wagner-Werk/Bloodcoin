@@ -137,8 +137,8 @@ contract S11Handler is S11Setup {
                 _violate("Staker-Teil ueber dem Deckel");
             }
             uint256 avg = ss / (end - pStart);
-            uint256 shareBp = b.circ == 0 ? 0 : (avg >= b.circ ? 10_000 : avg * 10_000 / b.circ);
-            if (part > (part + rest) * shareBp / 10_000) {
+            uint256 maxPart = b.circ == 0 ? 0 : (avg >= b.circ ? part + rest : (part + rest) * avg / b.circ);
+            if (part > maxPart) {
                 shareViolations++;
                 _violate("Staker-Teil ueber dem Anteil am Umlauf");
             }

@@ -261,7 +261,11 @@ contract BcusStaking is ReentrancyGuard {
         uint256 fresh = token.balanceOf(address(this)) - totalStaked - reserved;
         uint256 part;
         if (ss > 0 && fresh > 0) {
-            part = fresh * _shareBp(ss / len) / 10_000;
+            // Anteil exakt (durchschnittlicher Einsatz / Umlauf), ohne Abrunden auf Basispunkte;
+            // sonst verlören kleine Staker bis zu einem ganzen Basispunkt (KI-Prüfung Runde 2, F-03).
+            uint256 avg = ss / len;
+            uint256 c = circulating();
+            part = avg >= c ? fresh : fresh * avg / c;
             uint256 cap = ss * maxWeeklyBp / (10_000 * epochLength);
             if (part > cap) part = cap;
         }
