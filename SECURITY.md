@@ -47,11 +47,14 @@ BCUS has no market value today. Rewards are paid from the founder allocation as 
 
 - **Oracle key loss:** if the oracle signing key is lost (not stolen), `retire()` can no longer be
   called and the mortality factor stays at its last value. Mitigation: a retire signature is kept offline.
-- **Share at sync time:** `BcusStaking` computes the stakers' share of each emission at the moment
-  of the sync, not as an average over the week. Timing (for example calling `FounderLock.release()`
-  just before) can shift part of it to mining. The 1 % weekly cap bounds this.
-- **Deposit resets the week counter:** any deposit, even 1 wei, resets `lastSyncAt`, which can lower
-  the staker cap after missed weeks.
+- **Merged weeks:** `BcusStaking` settles each emission week when the first call after its boundary
+  arrives. If a whole week passes without any call, the missed weeks are settled together and their
+  1 % caps are applied jointly, so the limit holds on average over those weeks rather than for each
+  one. Mitigation: a keeper calls `pull()` within about an hour after every boundary.
+- **Circulating supply read at settlement:** the share-of-supply rule reads `circulating()` when a
+  week is settled, not exactly at its boundary. Payouts from mining or the founder lock in between
+  can shift a small part between stakers and mining. Same mitigation.
+- **Rounding dust:** integer division leaves a few wei per week in `reserved` that no one can claim.
 - **Mining start:** the first hour after launch has low difficulty; a fast miner can collect most
   solutions until difficulty adjusts (about 1/168 of the mining pool).
 - **Trusted oracle:** whoever holds the signing key can report plausible but false numbers within the
