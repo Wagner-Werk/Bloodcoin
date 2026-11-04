@@ -86,7 +86,7 @@ contract S11FindingsTest is S11Setup {
             st.exit();
             whaleGot = token.balanceOf(ALICE);
         }
-        vmx.warp(boundary + 1 weeks + 1);
+        vmx.warp(boundary + 5);                 // Woche ist abgeschlossen, Anspruch steht fest
         uint256 b0 = token.balanceOf(BOB);
         vmx.prank(BOB);
         st.claim();

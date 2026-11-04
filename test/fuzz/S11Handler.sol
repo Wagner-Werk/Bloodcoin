@@ -35,6 +35,9 @@ contract S11Handler is S11Setup {
     uint256 public ghostParts;                       // Summe aller Staker-Teile seit Beginn
     uint256 public ghostStakeIntegral;               // Summe Einsatz x Sekunden seit Beginn (eigene Rechnung)
     uint256 public ghostIntegralAt;
+    // Eigene Rechnung der laufenden Abrechnungs-Woche des Staking (Einsatz x Sekunden seit ihrem Beginn)
+    uint256 public ghostOpenSS;
+    uint256 public ghostLastStakingAt;
     uint256 public reportsOk;
     uint256 public solutions;
     bool public ghostRetired;
@@ -101,34 +104,52 @@ contract S11Handler is S11Setup {
         uint256 reserved;
         uint256 sent;
         uint256 burned;
-        uint256 cap;
-        uint256 shareBp;
+        uint256 totalStaked;
+        uint256 current;
+        uint256 circ;
     }
 
     function _snap() internal view returns (Snap memory s) {
         s.reserved = st.reserved();
         s.sent = st.sentToMining();
         s.burned = st.burned();
-        s.cap = st.nextCap();
-        s.shareBp = st.nextShareBp();
+        s.totalStaked = st.totalStaked();
+        s.current = st.current();
+        s.circ = st.circulating();
     }
 
-    /// Nach einer Staking-Aktion: Was ist bei dieser Synchronisation an die Staker gegangen, und
-    /// hält das Deckel und Anteils-Regel ein?
+    /// Nach einer Staking-Aktion: Wurde eine Abrechnungs-Woche abgeschlossen, prüft der Handler mit
+    /// eigener Rechnung (Einsatz x Sekunden bis zur echten Wochengrenze), dass der Staker-Teil
+    /// Deckel und Anteils-Regel einhält.
     function _checkSync(Snap memory b, uint256 claimed) internal {
         uint256 part = st.reserved() + claimed + (st.burned() - b.burned) - b.reserved;
         uint256 rest = st.sentToMining() - b.sent;
-        if (part + rest == 0) return;
-        syncsWithFresh++;
-        ghostParts += part;
-        if (part > b.cap) {
-            capViolations++;
-            _violate("Staker-Teil ueber dem Deckel");
+        uint256 cur = st.current();
+        if (cur > b.current) {
+            (uint256 end,,) = st.periods(cur);
+            (uint256 pStart,,) = st.periods(b.current);
+            uint256 ss = ghostOpenSS + b.totalStaked * (end - ghostLastStakingAt);
+            ghostOpenSS = b.totalStaked * (now_ - end);
+            if (part + rest > 0) syncsWithFresh++;
+            ghostParts += part;
+            if (part > ss / (100 * 1 weeks)) {
+                capViolations++;
+                _violate("Staker-Teil ueber dem Deckel");
+            }
+            uint256 avg = ss / (end - pStart);
+            uint256 shareBp = b.circ == 0 ? 0 : (avg >= b.circ ? 10_000 : avg * 10_000 / b.circ);
+            if (part > (part + rest) * shareBp / 10_000) {
+                shareViolations++;
+                _violate("Staker-Teil ueber dem Anteil am Umlauf");
+            }
+        } else {
+            ghostOpenSS += b.totalStaked * (now_ - ghostLastStakingAt);
+            if (part + rest > 0) {
+                capViolations++;
+                _violate("Verteilung ohne Wochenabschluss");
+            }
         }
-        if (part > (part + rest) * b.shareBp / 10_000) {
-            shareViolations++;
-            _violate("Staker-Teil ueber dem Anteil am Umlauf");
-        }
+        ghostLastStakingAt = now_;
     }
 
     // ---------------------------------------------------------------- Aktionen

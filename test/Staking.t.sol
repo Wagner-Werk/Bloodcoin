@@ -90,22 +90,28 @@ contract StakingTest is Test {
         other.pull();
     }
 
+    function testBindTooLate() public {
+        BcusStaking other = new BcusStaking();
+        MortalityEmission e2 = new MortalityEmission(address(0x0A), address(other), address(0), HOLDER, 0);
+        vm.warp(block.timestamp + 1 weeks);
+        vm.expectRevert(BcusStaking.TooLate.selector);
+        other.bind(address(e2));
+    }
+
     // ---------------------------------------------------------------- Verteilung
 
-    function testSingleStakerGetsWholeWeekStreamedOver7Days() public {
+    function testSingleStakerGetsWholeWeekAtWeekEnd() public {
         trim(ALICE, 100e18);
         trim(BOB, 0);                                    // Umlauf = nur Alice, Anteil 100 %
         stake(ALICE, 100e18);
+        vm.warp(START + 1 weeks - 1);
+        st.pull();                                       // Woche läuft noch: nichts verteilt
+        assertEq(st.earned(ALICE), 0);
+        assertEq(st.reserved(), 0);
         vm.warp(START + 1 weeks);
-        st.pull();                                       // Woche 1 kommt an, Strom startet
-        vm.warp(START + 1 weeks + 3.5 days);
-        assertNear(claim(ALICE), base / 2, 1e12);        // nach halber Zeit die Hälfte
-        vm.warp(START + 2 weeks);
-        st.pull();                                       // Woche 2 kommt dazu
-        vm.warp(START + 4 weeks);
-        st.pull();
-        vm.warp(START + 6 weeks);
-        claim(ALICE);
+        st.pull();                                       // Woche abgeschlossen
+        assertNear(st.earned(ALICE), base, 1e12);
+        assertNear(claim(ALICE), base, 1e12);            // sofort abholbar, kein Strom
         assertSolvent();
     }
 
@@ -116,11 +122,8 @@ contract StakingTest is Test {
         stake(BOB, 300e18);
         vm.warp(START + 1 weeks);
         st.pull();
-        vm.warp(START + 1 weeks + 7 days);
-        uint256 a = claim(ALICE);
-        uint256 b = claim(BOB);
-        assertNear(a, base / 4, 1e12);
-        assertNear(b, base * 3 / 4, 1e12);
+        assertNear(claim(ALICE), base / 4, 1e12);
+        assertNear(claim(BOB), base * 3 / 4, 1e12);
         assertSolvent();
     }
 
@@ -129,18 +132,13 @@ contract StakingTest is Test {
         trim(BOB, 100_000e18);
         stake(ALICE, 100e18);
         vm.warp(START + 1 weeks - 1);
-        stake(BOB, 100_000e18);                          // riesiger Einsatz kurz vor der Ausgabe
-        vm.warp(START + 1 weeks);
-        st.pull();
+        stake(BOB, 100_000e18);                          // riesiger Einsatz eine Sekunde vor der Grenze
         vm.warp(START + 1 weeks + 1);
         vm.prank(BOB);
-        st.exit();                                       // sofort wieder raus
-        assertLe(token.balanceOf(BOB), 100_000e18 + base / 1000);
-        // Bobs Sekunde zählt zeitgewichtet kaum: Anteil bleibt bei rund 100 von 100.100, Alice
-        // bekommt also ihren kleinen Anteil und nicht die ganze Woche (früher Befund B2).
-        vm.warp(START + 2 weeks + 1);
+        st.exit();                                       // Woche wird abgeschlossen, Bob geht
+        assertLe(token.balanceOf(BOB), 100_000e18 + base / 100_000);
         uint256 a = claim(ALICE);
-        assertLe(a, base / 500);
+        // Bobs Sekunde zählt zeitgewichtet kaum: Anteil rund 100 von 100.100.
         assertNear(a, base * 100 / 100_100, base / 10_000);
         assertSolvent();
     }
@@ -151,42 +149,104 @@ contract StakingTest is Test {
         stake(ALICE, 100e18);
         vm.warp(START + 1 weeks);
         em.mint();                                       // jemand ruft direkt am Emissions-Contract
-        assertEq(st.rewardRate(), 0);
+        assertEq(st.reserved(), 0);
         st.pull();                                       // wird trotzdem erkannt
-        vm.warp(START + 1 weeks + 7 days);
         assertNear(claim(ALICE), base, 1e12);
         assertSolvent();
     }
 
-    function testRewardsWithoutStakersAreBurned() public {
+    function testWeekWithoutStakersGoesAway() public {
         trim(ALICE, 100e18);
         trim(BOB, 0);
         vm.warp(START + 1 weeks);
-        st.pull();                                       // niemand stakt: Anteil 0, alles verbrannt
+        st.pull();                                       // niemand stakt: alles weg (hier: verbrannt)
         assertNear(token.balanceOf(st.BURN()), base, 1e12);
-        assertEq(st.rewardRate(), 0);
+        assertEq(st.reserved(), 0);
         vm.warp(START + 1 weeks + 7 days);
-        stake(ALICE, 100e18);                            // Woche 2 kommt an, bevor Alice zählt
+        stake(ALICE, 100e18);                            // Woche 2 wird abgeschlossen, bevor Alice zählt
         assertNear(token.balanceOf(st.BURN()), 2 * base, 1e12);
+        assertEq(st.earned(ALICE), 0);
         vm.warp(START + 3 weeks);
         st.pull();                                       // Woche 3: Alice hat 100 % des Umlaufs
-        vm.warp(START + 4 weeks);
-        assertNear(claim(ALICE), base, base / 100);      // nur Woche 3, die davor sind weg
+        assertNear(claim(ALICE), base, base / 100);
         assertSolvent();
     }
 
-    function testStakerJoiningMidStreamGetsOnlyTheRest() public {
+    function testStakerJoiningMidWeekGetsTimeShare() public {
         trim(ALICE, 100e18);
         trim(BOB, 100e18);
-        stake(ALICE, 100e18);                            // Umlauf 200, gestakt 100: Anteil 50 %
+        stake(ALICE, 100e18);
+        vm.warp(START + 3.5 days);
+        stake(BOB, 100e18);                              // halbe Woche dabei
         vm.warp(START + 1 weeks);
         st.pull();
-        assertNear(token.balanceOf(st.BURN()), base / 2, 1e12);   // die andere Hälfte
-        vm.warp(START + 1 weeks + 3.5 days);
-        stake(BOB, 100e18);                              // steigt zur Hälfte des Stroms ein
-        vm.warp(START + 1 weeks + 7 days);
-        assertNear(claim(ALICE), base * 3 / 8, 1e12);    // 1/4 allein + 1/8 geteilt
-        assertNear(claim(BOB), base / 8, 1e12);
+        // Durchschnitt 150 von 200 im Umlauf: 75 % der Woche an die Staker, davon Alice 2/3, Bob 1/3.
+        assertNear(claim(ALICE), base / 2, 1e12);
+        assertNear(claim(BOB), base / 4, 1e12);
+        assertNear(token.balanceOf(st.BURN()), base / 4, 1e12);
+        assertSolvent();
+    }
+
+    /// KI-Prüfung 4.11. (ChatGPT BCUS-01, Mistral F2): Wer erst nach der Woche einsteigt, bekommt
+    /// aus ihr nichts, auch nicht als Strom in der Folgewoche.
+    function testLateJoinerGetsNothingFromClosedWeek() public {
+        trim(ALICE, 100e18);
+        trim(BOB, 100_000e18);
+        stake(ALICE, 100e18);
+        vm.warp(START + 1 weeks + 1);
+        stake(BOB, 100_000e18);                          // schliesst Woche 1 ab, dann zählt Bob
+        uint256 a = st.earned(ALICE);
+        assertTrue(a > 0);
+        assertEq(st.earned(BOB), 0);
+        vm.warp(START + 1 weeks + 6 days);
+        assertEq(claim(BOB), 0);
+        assertEq(claim(ALICE), a);
+        assertSolvent();
+    }
+
+    /// KI-Prüfung 4.11. (ChatGPT BCUS-03): Wer mitten in der Woche aussteigt, behält seinen
+    /// Anteil für die Zeit, in der er gestakt war. Ist bei Wochenende niemand mehr gestakt, geht
+    /// der Topf an die, die in der Woche gestakt waren, nicht an den nächsten Einsteiger.
+    function testLeaverKeepsClaimNobodyElseGetsIt() public {
+        trim(ALICE, 100e18);
+        trim(BOB, 100e18);
+        stake(ALICE, 100e18);
+        vm.warp(START + 3.5 days);
+        vm.prank(ALICE);
+        st.withdraw(100e18);                             // halbe Woche, dann raus
+        vm.warp(START + 1 weeks + 1);
+        stake(BOB, 100e18);                              // schliesst die Woche ab
+        // Durchschnitt 50 von 200 im Umlauf: 25 % der Woche, alles für Alice.
+        assertNear(st.earned(ALICE), base / 4, 1e12);
+        assertEq(st.earned(BOB), 0);
+        assertNear(claim(ALICE), base / 4, 1e12);
+        assertSolvent();
+    }
+
+    /// KI-Prüfung 4.11. (Mistral F1, ChatGPT BCUS-02): Stille Wochen werden an den echten
+    /// Wochengrenzen abgerechnet und gehen an die, die in diesen Wochen gestakt waren.
+    function testQuietWeeksGoToThoseWhoStaked() public {
+        trim(ALICE, 100e18);
+        trim(BOB, 100_000e18);
+        stake(ALICE, 100e18);
+        vm.warp(START + 3 weeks + 1);
+        stake(BOB, 100_000e18);                          // erster Aufruf nach drei stillen Wochen
+        assertEq(st.earned(BOB), 0);
+        // Umlauf 100.100, Alice 100 gestakt: Anteil 9 Basispunkte (abgerundet) von 3 Wochen.
+        assertNear(claim(ALICE), 3 * base * 9 / 10_000, 1e12);
+        assertSolvent();
+    }
+
+    /// KI-Prüfung 4.11. (Mistral F1): Ein pull() kurz vor der Wochengrenze verschiebt nichts.
+    function testPullTimingDoesNotMatter() public {
+        trim(ALICE, 100e18);
+        trim(BOB, 0);
+        stake(ALICE, 100e18);
+        vm.warp(START + 2 weeks - 1);
+        st.pull();                                       // schliesst Woche 1 ab
+        vm.warp(START + 2 weeks + 60);
+        st.pull();                                       // schliesst Woche 2 ab
+        assertNear(claim(ALICE), 2 * base, 1e12);
         assertSolvent();
     }
 
@@ -200,7 +260,6 @@ contract StakingTest is Test {
         assertEq(st.stakerShareBp(), 2500);
         vm.warp(START + 1 weeks);
         st.pull();
-        vm.warp(START + 2 weeks - 1);                    // vor der 2. Ausgabe
         assertNear(claim(ALICE), base / 4, base / 100_000);
         assertNear(token.balanceOf(st.BURN()), base * 3 / 4, base / 100_000);
         assertSolvent();
