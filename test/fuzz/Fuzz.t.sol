@@ -72,7 +72,9 @@ contract S11FuzzTest is S11Setup {
             (uint256 recent, uint256 baseline) = validDeaths(seed, seed >> 128);
             uint256 before = em.factorMilli();
             uint256 expect = em.stepToward(before, em.targetFor(recent, baseline));
-            oracle.submit(we, recent, baseline, sig(SIGNER_PK, oracle.reportDigest(we, recent, baseline)));
+            oracle.propose(we, recent, baseline, sig(SIGNER_PK, oracle.reportDigest(we, recent, baseline)));
+            vmx.warp(oracle.executableAt());
+            oracle.execute();
             uint256 f = em.factorMilli();
             vmx.assertEq(f, expect, "Faktor falsch");
             vmx.assertLe(f, 1000, "Faktor ueber 1,0");
@@ -91,7 +93,7 @@ contract S11FuzzTest is S11Setup {
         (uint256 recent, uint256 baseline) = validDeaths(r, b);
         bytes memory s = sig(pk, oracle.reportDigest(we, recent, baseline));
         vmx.expectRevert(SignedMortalityOracle.BadSignature.selector);
-        oracle.submit(we, recent, baseline, s);
+        oracle.propose(we, recent, baseline, s);
     }
 
     /// Eine gültige Signatur passt nur zu genau den signierten Zahlen.
@@ -102,7 +104,7 @@ contract S11FuzzTest is S11Setup {
         bytes memory s = sig(SIGNER_PK, oracle.reportDigest(we, recent, baseline));
         uint256 other = recent + 1 + dr % 1000;
         vmx.expectRevert(SignedMortalityOracle.BadSignature.selector);
-        oracle.submit(we, other, baseline, s);
+        oracle.propose(we, other, baseline, s);
     }
 
     function testFuzz_OutOfRangeRejected(uint256 r, uint256 b) public {
@@ -112,7 +114,7 @@ contract S11FuzzTest is S11Setup {
         uint256 recent = r % 2 == 0 ? r % 80_000 : 1_000_001 + r % 1e30;
         bytes memory s = sig(SIGNER_PK, oracle.reportDigest(we, recent, baseline));
         vmx.expectRevert(SignedMortalityOracle.OutOfRange.selector);
-        oracle.submit(we, recent, baseline, s);
+        oracle.propose(we, recent, baseline, s);
     }
 
     /// Wer den Faktor mit dem Schlüssel nach unten treibt und dann abschaltet, schreibt ihn nicht fest.
@@ -123,7 +125,9 @@ contract S11FuzzTest is S11Setup {
             t += 1 weeks;
             vmx.warp(t);
             uint256 we = latestReportableSaturday(t);
-            oracle.submit(we, 400_000, 200_000, sig(SIGNER_PK, oracle.reportDigest(we, 400_000, 200_000)));
+            oracle.propose(we, 400_000, 200_000, sig(SIGNER_PK, oracle.reportDigest(we, 400_000, 200_000)));
+            vmx.warp(oracle.executableAt());
+            oracle.execute();
         }
         oracle.retire(sig(SIGNER_PK, oracle.retireDigest()));
         vmx.assertEq(em.factorMilli(), 1000, "Faktor nach retire nicht 1,0");
@@ -133,7 +137,40 @@ contract S11FuzzTest is S11Setup {
         uint256 we2 = latestReportableSaturday(t);
         bytes memory s = sig(SIGNER_PK, oracle.reportDigest(we2, 200_000, 200_000));
         vmx.expectRevert(SignedMortalityOracle.IsRetired.selector);
-        oracle.submit(we2, 200_000, 200_000, s);
+        oracle.propose(we2, 200_000, 200_000, s);
+    }
+
+    /// Wer auch immer wann vorschlägt und ausführt (auch ein Dieb mit dem Melde-Schlüssel, der
+    /// späte Ausführungen sammelt): zwischen zwei wirksamen Meldungen liegen mindestens MIN_INTERVAL,
+    /// und keine wird vor Ablauf der Einspruchsfrist wirksam.
+    function testFuzz_OneExecutionPerInterval(uint256 seed) public {
+        uint256 t = START + 9 weeks;
+        vmx.warp(t);
+        uint256 lastExec;
+        uint256 execs;
+        for (uint256 i = 0; i < 60; i++) {
+            seed = uint256(keccak256(abi.encode(seed, i)));
+            t += seed % 4 == 0 ? seed % 10 days : seed % 1 days;
+            vmx.warp(t);
+            if (oracle.executableAt() == 0) {
+                uint256 we = latestReportableSaturday(t);
+                if (we <= em.lastWeekEnding()) continue;
+                if (oracle.lastProposedAt() != 0 && t < oracle.lastProposedAt() + oracle.MIN_INTERVAL()) continue;
+                oracle.propose(we, 300_000, 200_000, sig(SIGNER_PK, oracle.reportDigest(we, 300_000, 200_000)));
+            } else {
+                (, uint64 at,,) = oracle.pending();
+                try oracle.execute() {
+                    vmx.assertTrue(t >= uint256(at) + oracle.CHALLENGE_PERIOD(), "vor Fristende wirksam");
+                    if (execs > 0) vmx.assertTrue(t >= lastExec + oracle.MIN_INTERVAL(), "zwei Ausfuehrungen < 6 Tage");
+                    lastExec = t;
+                    execs++;
+                } catch {
+                    vmx.assertTrue(t < oracle.executableAt(), "faellige Meldung abgelehnt");
+                }
+            }
+        }
+        // Faktor höchstens 0,05 je Ausführung
+        vmx.assertTrue(em.factorMilli() >= 1000 - 50 * execs, "Faktor zu schnell");
     }
 
     // ================================================================ Emission und Token

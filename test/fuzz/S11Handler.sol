@@ -347,9 +347,42 @@ contract S11Handler is S11Setup {
         }
     }
 
+    uint256 public ghostLastExecutedAt;
+
     /// Gültig signierte Meldung mit zufälligen, plausiblen Zahlen (auch Extremwerte bis 2:1).
+    /// Wartet schon eine, wird sie stattdessen wirksam gemacht, sobald Frist und Abstand um sind.
     function report(uint256 r, uint256 bl) external {
         _begin();
+        if (oracle.executableAt() != 0) {
+            if (now_ < oracle.executableAt()) return;
+            (, , uint64 pr, uint64 pb) = oracle.pending();
+            uint256 before = em.factorMilli();
+            uint256 expect = em.stepToward(before, em.targetFor(pr, pb));
+            uint256 lastExec = ghostLastExecutedAt;
+            try oracle.execute() {
+                ghostLastExecutedAt = now_;
+                if (ghostRetired) {
+                    unexpectedSuccess++;
+                    _violate("Meldung nach retire wirksam");
+                }
+                if (lastExec != 0 && now_ < lastExec + oracle.MIN_INTERVAL()) {
+                    stepViolations++;
+                    _violate("Mindestabstand verletzt");
+                }
+                uint256 f = em.factorMilli();
+                if (f != expect || f > 1000 || f < 500 || (f > before ? f - before : before - f) > 50) {
+                    stepViolations++;
+                    _violate("Faktor-Schritt falsch");
+                }
+                if (f > ghostMaxFactor) ghostMaxFactor = f;
+                if (f < ghostMinFactor) ghostMinFactor = f;
+                reportsOk++;
+            } catch {
+                unexpectedReverts++;
+                _violate("faellige Meldung nicht ausfuehrbar");
+            }
+            return;
+        }
         if (now_ < START + 9 weeks) return;
         uint256 we = latestReportableSaturday(now_);
         if (we <= em.lastWeekEnding()) return;
@@ -359,27 +392,31 @@ contract S11Handler is S11Setup {
         if (lo < 80_000) lo = 80_000;
         if (hi > 1_000_000) hi = 1_000_000;
         uint256 recent = clamp(r, lo, hi);
-        uint256 before = em.factorMilli();
-        uint256 expect = em.stepToward(before, em.targetFor(recent, baseline));
         bytes memory s = sig(SIGNER_PK, oracle.reportDigest(we, recent, baseline));
-        try oracle.submit(we, recent, baseline, s) {
+        if (oracle.lastProposedAt() != 0 && now_ < oracle.lastProposedAt() + oracle.MIN_INTERVAL()) return;
+        try oracle.propose(we, recent, baseline, s) {
             if (ghostRetired) {
                 unexpectedSuccess++;
                 _violate("Meldung nach retire angenommen");
             }
-            uint256 f = em.factorMilli();
-            if (f != expect || f > 1000 || f < 500 || (f > before ? f - before : before - f) > 50) {
-                stepViolations++;
-                _violate("Faktor-Schritt falsch");
-            }
-            if (f > ghostMaxFactor) ghostMaxFactor = f;
-            if (f < ghostMinFactor) ghostMinFactor = f;
-            reportsOk++;
         } catch {
             if (!ghostRetired) {
                 unexpectedReverts++;
                 _violate("gueltige Meldung abgelehnt");
             }
+        }
+    }
+
+    /// Der Wächter verwirft die wartende Meldung: der Faktor darf sich dadurch nicht ändern.
+    function veto(uint256 seed) external {
+        _begin();
+        if (uint256(keccak256(abi.encode(seed))) % 10 != 0 || oracle.executableAt() == 0 || ghostRetired) return;
+        uint256 before = em.factorMilli();
+        vmx.prank(GUARDIAN);
+        oracle.veto();
+        if (em.factorMilli() != before || oracle.executableAt() != 0) {
+            stepViolations++;
+            _violate("Veto aenderte den Faktor");
         }
     }
 
@@ -392,7 +429,7 @@ contract S11Handler is S11Setup {
         uint256 we = latestReportableSaturday(now_);
         recent = clamp(recent, 100_000, 400_000);
         bytes memory s = sig(pk, oracle.reportDigest(we, recent, 200_000));
-        try oracle.submit(we, recent, 200_000, s) {
+        try oracle.propose(we, recent, 200_000, s) {
             unexpectedSuccess++;
             _violate("gefaelschte Meldung angenommen");
         } catch {}
@@ -401,7 +438,7 @@ contract S11Handler is S11Setup {
     /// Selten: Melder abschalten. Danach muss der Faktor 1,0 sein und bleiben.
     function retire(uint256 seed) external {
         _begin();
-        if (ghostRetired || seed % 400 != 0) return;
+        if (ghostRetired || uint256(keccak256(abi.encode(seed))) % 400 != 0) return;
         try oracle.retire(sig(SIGNER_PK, oracle.retireDigest())) {
             ghostRetired = true;
             if (em.factorMilli() != 1000 || em.targetMilli() != 1000) {
