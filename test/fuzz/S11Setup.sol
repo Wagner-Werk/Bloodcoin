@@ -33,6 +33,7 @@ abstract contract S11Setup {
     uint256 internal constant START = 1_800_000_000;
     uint256 internal constant INITIAL = 1_000_000e18;
     uint256 internal constant SIGNER_PK = 0xB10D;
+    address internal constant GUARDIAN = address(0x6A2D);
 
     // Speicherplätze in BcusMining (forge inspect BcusMining storageLayout).
     bytes32 internal constant MINING_TARGET_SLOT = bytes32(uint256(3));
@@ -48,7 +49,7 @@ abstract contract S11Setup {
 
     function deployS11(address beneficiary) internal {
         vmx.warp(START);
-        oracle = new SignedMortalityOracle(vmx.addr(SIGNER_PK));
+        oracle = new SignedMortalityOracle(vmx.addr(SIGNER_PK), GUARDIAN);
         st = new BcusStaking();
         lock = new FounderLock(beneficiary);
         mn = new BcusMining();

@@ -16,6 +16,8 @@ interface VmScript {
 
 /// Wie Deploy.s.sol, aber mit dem eigenen signierten Melder statt Chainlink CRE (Plan B).
 /// ORACLE_SIGNER ist die Adresse des Server-Schlüssels (oracle/signed/README.md).
+/// ORACLE_GUARDIAN ist der Wächter: ein zweiter Schlüssel, offline beim Gründer, der wartende
+/// Meldungen verwerfen und den Melder abschalten kann. Unveränderlich, also vor dem Deploy festlegen.
 /// Die Startmenge (Gründer-BCUS) geht nicht an eine Adresse, sondern in den FounderLock:
 /// über 10 Jahre ab Deploy linear frei (100.000 pro Jahr bei 1 Mio.), nur an FOUNDER_BENEFICIARY.
 /// Neue BCUS gehen je zur Hälfte an das Mining (jeder kann schürfen) und an das Staking.
@@ -28,11 +30,13 @@ contract DeploySigned {
         returns (address oracle, address staking, address emission, address token, address founderLock, address mining)
     {
         address signer = vm.envAddress("ORACLE_SIGNER");
+        address guardian = vm.envAddress("ORACLE_GUARDIAN");
+        require(guardian != address(0) && guardian != signer, "ORACLE_GUARDIAN muss eine andere Adresse als ORACLE_SIGNER sein");
         address beneficiary = vm.envAddress("FOUNDER_BENEFICIARY");
         uint256 initialMint = vm.envUint("INITIAL_MINT_BCUS") * 1e18;
 
         vm.startBroadcast();
-        SignedMortalityOracle o = new SignedMortalityOracle(signer);
+        SignedMortalityOracle o = new SignedMortalityOracle(signer, guardian);
         BcusStaking st = new BcusStaking();
         FounderLock lock = new FounderLock(beneficiary);
         BcusMining m = new BcusMining();
