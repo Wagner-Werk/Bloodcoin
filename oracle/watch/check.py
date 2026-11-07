@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Unabhängige Prüfung der Orakel-Meldungen, läuft auf GitHub statt auf dem Server.
 
-Liest die Meldungen direkt von der Chain (Event `Reported` von SignedMortalityOracle), rechnet jede
-mit den heutigen CDC-Zahlen nach und schlägt Alarm, wenn sie nicht passt. Die abgelegten JSON-Dateien
+Liest die Meldungen direkt von der Chain (Event `Reported` bzw. ab S6 `Executed` von
+SignedMortalityOracle), rechnet jede mit den heutigen CDC-Zahlen nach und schlägt Alarm, wenn sie
+nicht passt. Ab S6 prüft sie zusätzlich den offenen Vorschlag (`pending`), solange der Wächter ihn
+noch verwerfen kann. Die abgelegten JSON-Dateien
 des Servers werden bewusst nicht benutzt: Wer den Server übernimmt, kann die auch fälschen.
 
     check.py --rpc URL --oracle 0x.. --from-block N [--days 21] [--max-silence-days 15]
@@ -10,6 +12,7 @@ des Servers werden bewusst nicht benutzt: Wer den Server übernimmt, kann die au
 Alarm (Exit-Code 1) bei:
 - einer Meldung, deren Summen nicht zu den CDC-Wochen passen,
 - einer Meldung mit Wochen, die es bei der CDC nicht gibt,
+- einem offenen Vorschlag, der nicht zur CDC passt (mit Frist für das Veto in der Nachricht),
 - `Retired` (Melder abgeschaltet),
 - keiner Meldung seit `--max-silence-days` Tagen (Server-Job steht).
 Ist NTFY_URL gesetzt, geht der Alarm zusätzlich als Push dorthin.
@@ -36,6 +39,12 @@ import report  # noqa: E402
 # keccak256 der Event-Signaturen und Funktions-Selektoren
 TOPIC_REPORTED = "0x4229c473bc7b232472389f581f258012ee8d5d83be43bf9e2fba8ed310f22313"  # Reported(uint256,uint256,uint256)
 TOPIC_RETIRED = "0xc15f68f0a72806ff3f8bf2435385a67c4c22413f1c7931ef7bcea718e6ffcf03"   # Retired()
+# Ab S6 (Vorschlag mit Einspruchsfrist)
+TOPIC_EXECUTED = "0x3e504bb8b225ad41f613b0c3c4205cdd752d1615b4d77cd1773417282fcfb5d9"  # Executed(uint256,uint256,uint256)
+TOPIC_VETOED = "0x2ae00ba9813199478b6f22f0c9b606daa70f8efc319c8d2fa6af63f66ea31763"    # Vetoed(uint256)
+TOPIC_RETIRED_BY = "0xda9d2e31afb0de4b09fe65662e5e025013186f59dd81d4946248587a2f77c6df" # Retired(address)
+SEL_PENDING = "0xe20ccec3"                                                              # pending()
+SEL_EXECUTABLE_AT = "0xd7304dfd"                                                        # executableAt()
 SEL_RETIRED = "0x2eb38ae0"                                                              # retired()
 SEL_EMISSION = "0x827c049e"                                                             # emission()
 SEL_LAST_WEEK = "0xe1ce7fde"                                                            # lastWeekEnding()
@@ -54,7 +63,7 @@ class Rpc:
         self.url = url
         self.n = 0
 
-    def call(self, method: str, params: list):
+    def call(self, method: str, params: list, revert_ok: bool = False):
         for attempt in range(5):
             self.n += 1
             body = json.dumps({"jsonrpc": "2.0", "id": self.n, "method": method, "params": params}).encode()
@@ -74,6 +83,8 @@ class Rpc:
                 if "error" not in res:
                     return res["result"]
                 err = res["error"].get("message", str(res["error"]))
+                if revert_ok and "revert" in err.lower():
+                    return None
                 if "range" in err or "limit" in err or "too many" in err.lower():
                     raise RangeError(err)
             time.sleep(2 ** attempt)
@@ -91,7 +102,8 @@ def get_logs(rpc: Rpc, oracle: str, start: int, end: int) -> list:
         hi = min(end, lo + step - 1)
         try:
             logs += rpc.call("eth_getLogs", [{"address": oracle, "fromBlock": hex(lo), "toBlock": hex(hi),
-                                              "topics": [[TOPIC_REPORTED, TOPIC_RETIRED]]}])
+                                              "topics": [[TOPIC_REPORTED, TOPIC_EXECUTED, TOPIC_RETIRED,
+                                                                         TOPIC_RETIRED_BY, TOPIC_VETOED]]}])
         except RangeError:
             if step <= 100:
                 raise SystemExit("Fehler: RPC lehnt selbst kleine Blockspannen ab")
@@ -145,6 +157,31 @@ def check_report(week_ending: int, recent: int, baseline: int, weeks: dict[int, 
     return problems
 
 
+def check_pending(rpc: Rpc, oracle: str, now: int) -> list[str]:
+    """Offener Vorschlag (ab S6). Gleiche Toleranzen wie für wirksame Meldungen, damit eine Meldung,
+    die später Alarm auslösen würde, schon jetzt auffällt, solange noch ein Veto möglich ist."""
+    raw = rpc.call("eth_call", [{"to": oracle, "data": SEL_PENDING}, "latest"], revert_ok=True)
+    if not raw or len(raw) < 2 + 4 * 64:
+        print("Kein Vorschlags-Speicher (Orakel vor S6).")
+        return []
+    data = raw[2:]
+    week, proposed_at, recent, baseline = (int(data[i * 64:(i + 1) * 64], 16) for i in range(4))
+    if week == 0:
+        print("Kein offener Vorschlag.")
+        return []
+    due = int(rpc.call("eth_call", [{"to": oracle, "data": SEL_EXECUTABLE_AT}, "latest"]), 16)
+    due_s = dt.datetime.fromtimestamp(due, dt.timezone.utc).strftime("%d.%m.%Y %H:%M UTC")
+    groups = report.window_days(week // report.DAY)
+    found = check_report(week, recent, baseline, cdc_weeks([report.iso(d * report.DAY) for g in groups for d in g]))
+    state = "NICHT OK" if found else "ok"
+    print(f"Offener Vorschlag Woche {report.iso(week)}: {recent} / {baseline}, wirksam ab {due_s} -> {state}")
+    if not found:
+        return []
+    late = " (Frist schon um, Veto geht noch bis zur Ausführung)" if now >= due else ""
+    return [f"Vorschlag Woche {report.iso(week)} verdächtig, Veto bis {due_s}{late}"] + \
+        [f"Vorschlag Woche {report.iso(week)}: {f}" for f in found]
+
+
 def alarm(lines: list[str]) -> None:
     text = "Bloodcoin-Orakel: " + " | ".join(lines)
     for line in lines:
@@ -186,8 +223,11 @@ def main() -> None:
 
     last_ts, last_week = None, 0
     for log in logs:
-        if log["topics"][0] == TOPIC_RETIRED:
+        if log["topics"][0] in (TOPIC_RETIRED, TOPIC_RETIRED_BY):
             problems.append(f"Retired in Transaktion {log['transactionHash']}")
+            continue
+        if log["topics"][0] == TOPIC_VETOED:
+            print(f"Veto: Vorschlag Woche {report.iso(int(log['topics'][1], 16))} verworfen ({log['transactionHash']})")
             continue
         week = int(log["topics"][1], 16)
         data = log["data"][2:]
@@ -211,6 +251,8 @@ def main() -> None:
             problems.append(f"Keine Meldung seit Block {start} ({(now - start_ts) / 86400:.0f} Tage).")
     elif silent > a.max_silence_days:
         problems.append(f"Letzte Meldung vor {silent:.0f} Tagen.")
+
+    problems += check_pending(rpc, a.oracle, now)
 
     if problems:
         alarm(problems)
