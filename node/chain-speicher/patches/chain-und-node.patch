@@ -1,0 +1,113 @@
+--- a/bloodcoin/chain.py	2026-11-17 20:10:57.039049876 +0000
++++ b/bloodcoin/chain.py	2026-11-17 20:10:57.040613917 +0000
+@@ -11,7 +11,7 @@
+ from dataclasses import dataclass, field, asdict
+ from typing import Optional
+ 
+-from . import params
++from . import params, storage
+ from .crypto import sha256d, canonical, address_from_pubkey, is_valid_address, verify, Wallet
+ from .mortality import OracleReport, OracleError
+ 
+@@ -459,19 +459,37 @@
+         self.pending_oracle = report
+ 
+     # --- Speichern
+-    def save(self, path: str) -> None:
+-        with open(path, "w") as f:
+-            json.dump([b.to_dict() for b in self.blocks], f)
++    def save(self, path: str, log=print) -> None:
++        """Atomar speichern (Temp-Datei + fsync + os.replace), alte Version bleibt als .bak."""
++        storage.atomic_write_json(path, [b.to_dict() for b in self.blocks], log=log)
+ 
+     @classmethod
+-    def load(cls, path: str, genesis_bits: int = params.INITIAL_BITS) -> "Blockchain":
++    def from_dicts(cls, data, genesis_bits: int = params.INITIAL_BITS) -> "Blockchain":
++        if not isinstance(data, list) or not data:
++            raise ValidationError("Chain-Datei enthält keine Blockliste")
+         bc = cls(genesis_bits)
+-        with open(path) as f:
+-            blocks = [Block.from_dict(d) for d in json.load(f)]
+-        if len(blocks) > 1:
+-            bc.try_replace(blocks)
++        blocks = [Block.from_dict(d) for d in data]
++        if blocks[0].hash != bc.blocks[0].hash:
++            raise ValidationError("Chain-Datei hat einen anderen Genesis-Block")
++        if len(blocks) > 1 and not bc.try_replace(blocks):
++            raise ValidationError("Blöcke aus der Chain-Datei wurden nicht übernommen")
+         return bc
+ 
++    @classmethod
++    def load(cls, path: str, genesis_bits: int = params.INITIAL_BITS, log=print) -> "Blockchain":
++        """Lädt die Chain; bei kaputter Datei aus der .bak. Wirft ChainFileError, wenn beides
++        unbrauchbar ist, und FileNotFoundError, wenn es keine Chain-Datei gibt."""
++        bc = cls.load_or_none(path, genesis_bits, log)
++        if bc is None:
++            raise FileNotFoundError(path)
++        return bc
++
++    @classmethod
++    def load_or_none(cls, path: str, genesis_bits: int = params.INITIAL_BITS,
++                     log=print) -> Optional["Blockchain"]:
++        """Wie load, gibt aber None zurück, wenn weder Datei noch Sicherung existieren."""
++        return storage.load_with_fallback(path, lambda d: cls.from_dicts(d, genesis_bits), log)
++
+ 
+ def mine(block: Block, stop=lambda: False, check_every: int = 50_000) -> Optional[Block]:
+     """Sucht eine Nonce, bis der Hash das Ziel trifft. Gibt None zurück, wenn `stop()` wahr wird."""
+--- a/bloodcoin/node.py	2026-11-17 20:10:57.039081784 +0000
++++ b/bloodcoin/node.py	2026-11-17 20:10:57.040640869 +0000
+@@ -102,13 +102,24 @@
+         self.peer_fails: dict[str, int] = {}
+         self.bad_peers: dict[str, float] = {}   # URL -> gesperrt bis
+         os.makedirs(data_dir, exist_ok=True)
+-        if os.path.exists(self.chain_file):
+-            self.chain = Blockchain.load(self.chain_file, genesis_bits)
++        # Kaputte chain.json -> Sicherung .bak; beide kaputt -> ChainFileError (kein stiller Neustart).
++        loaded = Blockchain.load_or_none(self.chain_file, genesis_bits, log=self.log)
++        if loaded is not None:
++            self.chain = loaded
+             self.log(f"Chain geladen: Höhe {self.chain.height}")
+         else:
+             self.chain = Blockchain(genesis_bits)
+         self.server: Optional[ThreadingHTTPServer] = None
+ 
++    def save_chain(self) -> None:
++        """Speichert atomar. Schlägt das fehl (z. B. Datenträger voll), bleibt die alte Datei
++        heil und die Chain im Speicher; der Fehler wird laut geloggt statt den Thread zu beenden."""
++        try:
++            self.chain.save(self.chain_file, log=self.log)
++        except OSError as e:
++            self.log(f"FEHLER: Chain konnte nicht gespeichert werden ({e}); "
++                     f"alte {self.chain_file} bleibt unverändert, nächster Versuch beim nächsten Block")
++
+     # ---------------------------------------------------------------- Peers
+     def add_peer(self, url) -> None:
+         peer = normalize_peer(url)
+@@ -203,7 +214,7 @@
+                 self.ban_peer(peer, f"ungültige Chain: {e}")
+                 changed = False
+             if changed:
+-                self.chain.save(self.chain_file)
++                self.save_chain()
+                 self.log(f"Von {peer} synchronisiert, Höhe {self.chain.height}")
+         return changed
+ 
+@@ -256,7 +267,7 @@
+             connects = block.prev_hash == self.chain.tip.hash
+             if connects:
+                 self.chain.add_block(block)   # wirft ValidationError -> Strafpunkte
+-                self.chain.save(self.chain_file)
++                self.save_chain()
+                 self.log(f"Block {block.height} empfangen ({block.hash[:16]}…)")
+         if connects:
+             self.broadcast("/block", block.to_dict())
+@@ -287,7 +298,7 @@
+                 except ValidationError as e:
+                     self.log(f"Eigener Block verworfen: {e}")
+                     continue
+-                self.chain.save(self.chain_file)
++                self.save_chain()
+             self.log(f"Block {block.height} gemint ({block.hash[:16]}…, bits={block.bits}, "
+                      f"{len(block.transactions) - 1} Tx)")
+             self.broadcast("/block", block.to_dict())
