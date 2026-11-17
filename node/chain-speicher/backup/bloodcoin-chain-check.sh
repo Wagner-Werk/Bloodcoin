@@ -8,11 +8,16 @@
 # Exit 1 = kaputt -> ntfy-Alarm wurde gesendet. Das Backup-Skript darf dieses Backup dann NICHT
 #          als gut markieren.
 #
-# ntfy: NTFY_URL aus der Umgebung (z. B. aus /etc/bloodcoin-*.env), Format https://ntfy.sh/<thema>.
+# ntfy: NTFY_URL aus der Umgebung, sonst Thema aus /root/.bloodcoin-ntfy-topic.
 set -u
 
 FILE="${1:?Pfad zur chain.json fehlt}"
 MIN_BLOCKS="${2:-0}"
+
+# Ohne NTFY_URL das Thema aus der Server-Datei nehmen (so wie das bestehende Monitoring).
+if [ -z "${NTFY_URL:-}" ] && [ -r /root/.bloodcoin-ntfy-topic ]; then
+    NTFY_URL="https://ntfy.sh/$(tr -d '[:space:]' < /root/.bloodcoin-ntfy-topic)"
+fi
 
 alarm() {
     echo "CHAIN-CHECK FEHLER: $1" >&2
