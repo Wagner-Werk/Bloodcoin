@@ -89,6 +89,7 @@ def main() -> None:
     ap.add_argument("--rpc", required=True)
     ap.add_argument("--mining", required=True, help="Adresse des BcusMining-Contracts")
     ap.add_argument("--account", help="Foundry-Keystore zum Einreichen")
+    ap.add_argument("--password-file", help="Passwortdatei zum Keystore (sonst fragt cast nach)")
     ap.add_argument("--address", help="eigene Adresse (nur mit --dry-run nötig)")
     ap.add_argument("--batch", type=int, default=200_000, help="Versuche zwischen zwei Abfragen")
     ap.add_argument("--min-interval", type=int, default=600,
@@ -103,7 +104,8 @@ def main() -> None:
     else:
         if not a.account:
             sys.exit("--account fehlt")
-        me = cast("wallet", "address", "--account", a.account)
+        key = ["--account", a.account] + (["--password-file", a.password_file] if a.password_file else [])
+        me = cast("wallet", "address", *key)
     miner = bytes.fromhex(me[2:].rjust(40, "0"))
 
     nonce = int.from_bytes(os.urandom(8), "big")     # zufälliger Start, damit zwei Miner nicht dasselbe suchen
@@ -135,7 +137,7 @@ def main() -> None:
             continue
 
         try:
-            out = cast("send", a.mining, "mine(uint256)", str(found), "--rpc-url", a.rpc, "--account", a.account)
+            out = cast("send", a.mining, "mine(uint256)", str(found), "--rpc-url", a.rpc, *key)
         except CastError as e:
             failures += 1
             print(f"Einreichen fehlgeschlagen (error): {e}", flush=True)

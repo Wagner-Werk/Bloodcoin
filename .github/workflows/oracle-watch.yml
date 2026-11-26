@@ -5,12 +5,13 @@ name: Oracle watch
 
 on:
   schedule:
-    - cron: "0 7 * * *"   # täglich 07:00 UTC; die Meldung kommt montags 12:00 UTC
+    - cron: "0 */6 * * *"   # alle 6 Stunden: ein Vorschlag (montags 12:00 UTC) wartet 48 h auf ein mögliches Veto
   workflow_dispatch:
   pull_request:
     paths:
       - "oracle/watch/**"
       - "oracle/signed/report.py"
+      - "oracle/signed/test_report.py"
       - ".github/workflows/oracle-watch.yml"
 
 permissions:
@@ -24,10 +25,12 @@ jobs:
       # Zurzeit das Testnetz (Base Sepolia). Nach dem Mainnet-Deploy diese drei Werte ersetzen:
       # RPC https://mainnet.base.org, Orakel-Adresse und Deploy-Block aus dem Deploy.
       RPC: https://sepolia.base.org
-      ORACLE: "0xE9883ACF0Decf9e360ACd0C215AC15BAAA519c88"
-      FROM_BLOCK: "50613715"
+      ORACLE: "0x65F62e36538A6aa85A756b12Ac2D650CeaE61496"
+      FROM_BLOCK: "54433784"
       NTFY_URL: ${{ secrets.NTFY_URL }}
     steps:
       - uses: actions/checkout@v4
+      - name: Unit-Tests der Melder-Prüfungen
+        run: python3 -m unittest oracle/signed/test_report.py
       - name: Meldungen prüfen
         run: python3 oracle/watch/check.py --rpc "$RPC" --oracle "$ORACLE" --from-block "$FROM_BLOCK"

@@ -9,3 +9,12 @@ optimizer_runs = 200
 remappings = [
   "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
 ]
+
+# Fuzz- und Invariantentests (test/fuzz/). Standard: 256 Läufe, Invarianten 256 x 500 Aufrufe.
+# Gründlicher Lauf vor einem Code-Freeze: FOUNDRY_PROFILE=deep forge test --match-path 'test/fuzz/*'
+[profile.deep.fuzz]
+runs = 10000
+
+[profile.deep.invariant]
+runs = 1000
+depth = 1000

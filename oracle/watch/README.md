@@ -2,7 +2,12 @@
 
 `check.py` prüft die Meldungen von `SignedMortalityOracle`, ohne dem Server zu vertrauen. Es liest
 die Meldungen direkt von der Chain, holt dieselben 16 Wochen bei data.cdc.gov und rechnet nach.
-Der GitHub-Workflow `.github/workflows/oracle-watch.yml` macht das jeden Tag um 07:00 UTC.
+Der GitHub-Workflow `.github/workflows/oracle-watch.yml` macht das alle 6 Stunden (GitHub startet
+geplante Läufe oft eine bis mehrere Stunden später).
+
+Ab S6 wirkt eine Meldung erst 48 Stunden nach dem Vorschlag. Die Wache prüft deshalb auch den
+offenen Vorschlag (`pending`). Passt er nicht zur CDC, kommt der Alarm, solange der Wächter ihn
+noch verwerfen kann: «Vorschlag Woche X verdächtig, Veto bis …».
 
 Wofür: Der Melder-Schlüssel liegt auf dem Server, damit die Meldung automatisch läuft. Wer den
 Server übernimmt, kann damit plausible falsche Zahlen melden. Der Vertrag lässt pro Meldung nur
@@ -18,6 +23,7 @@ Der Lauf schlägt fehl (rot auf GitHub, Mail an den Besitzer des Workflows) bei:
 | Letzte 4 Wochen weichen von der CDC ab | unter -3 % oder über +1 % (die CDC trägt Tote nach, darum unten mehr Spiel) |
 | Vorjahre weichen von der CDC ab | mehr als 1 % |
 | Eine gemeldete Woche gibt es bei der CDC nicht | immer |
+| Offener Vorschlag weicht von der CDC ab | gleiche Grenzen wie oben, Nachricht nennt die Veto-Frist |
 | `Retired` | immer |
 | Keine Meldung | länger als 15 Tage |
 
@@ -32,8 +38,11 @@ nachträgt, und bei Fehlalarmen anpassen.
 
 1. Meldung auf Basescan und die genannte Woche bei data.cdc.gov ansehen. Ist es ein Fehlalarm
    (CDC hat stark nachkorrigiert), Grenze anpassen.
-2. Ist die Meldung falsch: Server-Job stoppen und den Melder mit der vorab signierten
-   `retire`-Signatur abschalten. Der Faktor geht dabei auf 1,0 zurück.
+2. Ist ein offener Vorschlag falsch: mit dem Wächter-Schlüssel verwerfen, bevor jemand `execute`
+   aufruft (Anleitung in `oracle/signed/README.md`, «Veto»).
+3. Ist der Melde-Schlüssel gestohlen: Server-Job stoppen und den Melder abschalten, mit dem Wächter
+   (`retire()` direkt oder per Signatur) oder der vorab signierten `retire`-Signatur. Der Faktor
+   geht dabei auf 1,0 zurück.
 
 ## Grenzen
 
