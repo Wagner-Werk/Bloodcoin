@@ -20,7 +20,7 @@ contract FounderLockTest is Test {
     // Gleiche Reihenfolge wie script/DeploySigned.s.sol
     function setUp() public {
         vm.warp(START);
-        SignedMortalityOracle o = new SignedMortalityOracle(vm.addr(0xB10D));
+        SignedMortalityOracle o = new SignedMortalityOracle(vm.addr(0xB10D), address(0x6A2D));
         BcusStaking st = new BcusStaking();
         lock = new FounderLock(FOUNDER);
         MortalityEmission e = new MortalityEmission(address(o), address(st), address(0), address(lock), MINT);

@@ -247,7 +247,10 @@ async function load() {
     const pct = (r.recent_deaths - r.baseline_deaths) / r.baseline_deaths * 100;
     const row = document.createElement("tr");
     row.className = "row";
-    row.innerHTML = `<td>${esc(r.week_ending)}${r.tx ? "" : " <span class='mono'>(not sent)</span>"}</td>
+    const state = r.status === "offen" ? ` <span class='mono'>(pending, effective from ${esc((r.executable_at || "").slice(0, 16).replace("T", " "))} UTC unless vetoed)</span>`
+      : r.status === "verworfen" ? " <span class='mono'>(vetoed)</span>"
+      : r.tx ? "" : " <span class='mono'>(not sent)</span>";
+    row.innerHTML = `<td>${esc(r.week_ending)}${state}</td>
       <td class="num">${fmt(r.recent_deaths)}</td><td class="num hide-sm">${fmt(r.baseline_deaths)}</td>
       <td class="num ${pct > 0 ? "up" : "down"}">${pct > 0 ? "+" : ""}${pct.toFixed(2)} %</td>
       <td class="num">${(r.target_milli / 1000).toFixed(3)}</td>`;
